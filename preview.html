@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Imposter Pictionary — Rules</title>
+  <style>
+    :root {
+      --bg: #07111f;
+      --bg-2: #0d1b2e;
+      --card: rgba(255, 255, 255, 0.075);
+      --card-2: rgba(255, 255, 255, 0.11);
+      --text: #edf6ff;
+      --muted: #b8c7d9;
+      --blue: #4aa8ff;
+      --yellow: #ffd447;
+      --red: #ff5c73;
+      --green: #51d88a;
+      --purple: #9b7bff;
+      --border: rgba(255, 255, 255, 0.18);
+      --shadow: rgba(0, 0, 0, 0.35);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(74, 168, 255, 0.18), transparent 32rem),
+        radial-gradient(circle at top right, rgba(255, 212, 71, 0.12), transparent 30rem),
+        linear-gradient(145deg, #030711 0%, var(--bg) 45%, #101229 100%);
+      line-height: 1.65;
+    }
+
+    .page {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 32px 0 64px;
+    }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: 28px;
+      padding: 56px 32px;
+      background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.03)),
+        radial-gradient(circle at 80% 20%, rgba(255, 212, 71, 0.16), transparent 24rem),
+        radial-gradient(circle at 15% 25%, rgba(74, 168, 255, 0.22), transparent 24rem);
+      box-shadow: 0 24px 70px var(--shadow);
+    }
+
+    .hero::after {
+      content: "?";
+      position: absolute;
+      right: 36px;
+      top: 8px;
+      font-size: 180px;
+      font-weight: 900;
+      color: rgba(255, 255, 255, 0.055);
+      transform: rotate(10deg);
+      pointer-events: none;
+    }
+
+    .kicker {
+      display: inline-flex;
+      gap: 10px;
+      align-items: center;
+      padding: 8px 14px;
+      border: 1px solid rgba(74, 168, 255, 0.38);
+      border-radius: 999px;
+      color: #cbe7ff;
+      background: rgba(74, 168, 255, 0.10);
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      font-size: 12px;
+    }
+
+    h1 {
+      margin: 20px 0 8px;
+      font-size: clamp(44px, 8vw, 88px);
+      line-height: 0.95;
+      letter-spacing: -0.06em;
+      text-transform: uppercase;
+    }
+
+    h1 span {
+      display: block;
+      color: var(--yellow);
+      text-shadow: 0 0 28px rgba(255, 212, 71, 0.24);
+    }
+
+    .tagline {
+      margin: 18px 0 0;
+      max-width: 760px;
+      color: var(--muted);
+      font-size: clamp(18px, 2vw, 22px);
+    }
+
+    .quick-cards {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-top: 32px;
+    }
+
+    .quick-card {
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 18px;
+      background: rgba(0, 0, 0, 0.20);
+    }
+
+    .quick-card strong {
+      display: block;
+      font-size: 14px;
+      color: var(--muted);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .quick-card span {
+      font-size: 20px;
+      font-weight: 800;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      gap: 24px;
+      margin-top: 28px;
+      align-items: start;
+    }
+
+    nav {
+      position: sticky;
+      top: 18px;
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      padding: 18px;
+      background: rgba(5, 12, 25, 0.78);
+      backdrop-filter: blur(16px);
+      box-shadow: 0 16px 44px rgba(0, 0, 0, 0.22);
+    }
+
+    nav h2 {
+      margin: 0 0 10px;
+      font-size: 16px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--yellow);
+    }
+
+    nav a {
+      display: block;
+      color: var(--muted);
+      text-decoration: none;
+      padding: 9px 10px;
+      border-radius: 12px;
+      font-size: 14px;
+    }
+
+    nav a:hover {
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    main {
+      display: grid;
+      gap: 18px;
+    }
+
+    section {
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 28px;
+      background: var(--card);
+      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.20);
+    }
+
+    h2 {
+      margin: 0 0 14px;
+      font-size: clamp(26px, 3vw, 36px);
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+    }
+
+    h3 {
+      margin: 24px 0 8px;
+      font-size: 20px;
+      color: #ffffff;
+    }
+
+    p {
+      margin: 10px 0;
+      color: var(--muted);
+    }
+
+    ul, ol {
+      color: var(--muted);
+      padding-left: 22px;
+    }
+
+    li {
+      margin: 8px 0;
+    }
+
+    .highlight {
+      color: var(--text);
+      font-weight: 750;
+    }
+
+    .formula {
+      margin: 16px 0;
+      padding: 16px 18px;
+      border: 1px solid rgba(255, 212, 71, 0.35);
+      border-radius: 16px;
+      background: rgba(255, 212, 71, 0.09);
+      color: #fff7ce;
+      font-weight: 800;
+      font-size: 18px;
+    }
+
+    .example {
+      margin-top: 16px;
+      padding: 18px;
+      border-left: 4px solid var(--blue);
+      border-radius: 14px;
+      background: rgba(74, 168, 255, 0.09);
+    }
+
+    .example strong {
+      color: #dff0ff;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      overflow: hidden;
+      border-radius: 16px;
+      margin: 16px 0;
+      border: 1px solid var(--border);
+    }
+
+    th, td {
+      padding: 14px 16px;
+      text-align: left;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+      color: var(--muted);
+    }
+
+    th {
+      background: rgba(255, 255, 255, 0.10);
+      color: var(--text);
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .mini-card {
+      padding: 18px;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: var(--card-2);
+    }
+
+    .mini-card h3 {
+      margin-top: 0;
+    }
+
+    .pill {
+      display: inline-block;
+      margin: 4px 4px 4px 0;
+      padding: 7px 11px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.10);
+      color: var(--text);
+      font-weight: 700;
+      font-size: 13px;
+    }
+
+    .blue { color: var(--blue); }
+    .yellow { color: var(--yellow); }
+    .green { color: var(--green); }
+    .red { color: var(--red); }
+    .purple { color: var(--purple); }
+
+    .callout {
+      margin-top: 16px;
+      padding: 18px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, rgba(255, 212, 71, 0.16), rgba(74, 168, 255, 0.10));
+      border: 1px solid rgba(255, 255, 255, 0.20);
+    }
+
+    .footer {
+      text-align: center;
+      color: var(--muted);
+      padding: 28px 0 0;
+      font-size: 14px;
+    }
+
+    .score-line {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      margin: 12px 0;
+      color: var(--muted);
+    }
+
+    .score-line b {
+      min-width: 94px;
+      color: var(--text);
+    }
+
+    @media (max-width: 900px) {
+      .quick-cards, .grid-2 {
+        grid-template-columns: 1fr 1fr;
+      }
+      .layout {
+        grid-template-columns: 1fr;
+      }
+      nav {
+        position: relative;
+        top: 0;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .page {
+        width: min(100% - 20px, 1120px);
+        padding-top: 12px;
+      }
+      .hero, section {
+        border-radius: 20px;
+        padding: 22px;
+      }
+      .quick-cards, .grid-2 {
+        grid-template-columns: 1fr;
+      }
+      th, td {
+        padding: 10px;
+        font-size: 14px;
+      }
+      .score-line {
+        display: block;
+      }
+      .score-line b {
+        display: block;
+      }
+    }
+
+    @media print {
+      body {
+        background: white;
+        color: #111;
+      }
+      .hero, section, nav, .quick-card, .mini-card, .example, .formula, .callout {
+        background: white;
+        color: #111;
+        box-shadow: none;
+        border-color: #ccc;
+      }
+      p, li, td, nav a, .tagline, .footer {
+        color: #333;
+      }
+      .layout {
+        display: block;
+      }
+      nav {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="hero">
+      <div class="kicker">Mystery Drawing Party Game</div>
+      <h1>Imposter <span>Pictionary</span></h1>
+      <p class="tagline">A drawing game where most players try to make the word guessable — but one hidden Imposter scores by making everyone fail.</p>
+
+      <div class="quick-cards" aria-label="Quick game details">
+        <div class="quick-card"><strong>Best for</strong><span>4–8 players</span></div>
+        <div class="quick-card"><strong>Each turn</strong><span>60 seconds</span></div>
+        <div class="quick-card"><strong>Main skills</strong><span>Draw • Guess • Bluff</span></div>
+        <div class="quick-card"><strong>Twist</strong><span>Accuse the drawer</span></div>
+      </div>
+    </header>
+
+    <div class="layout">
+      <nav aria-label="Rules navigation">
+        <h2>Rules Menu</h2>
+        <a href="#concept">1. Game Concept</a>
+        <a href="#objective">2. Objective</a>
+        <a href="#terms">3. Key Terms</a>
+        <a href="#setup">4. Setup</a>
+        <a href="#turn-flow">5. Turn Flow</a>
+        <a href="#guessing">6. Guessing Points</a>
+        <a href="#artist-scoring">7. Artist Scoring</a>
+        <a href="#imposter-scoring">8. Imposter Scoring</a>
+        <a href="#accusations">9. Accusations</a>
+        <a href="#threshold">10. Accusation Threshold</a>
+        <a href="#examples">11. Full Examples</a>
+        <a href="#winning">12. Winning</a>
+        <a href="#defaults">13. Default Settings</a>
+      </nav>
+
+      <main>
+        <section id="concept">
+          <h2>1. Game Concept</h2>
+          <p><span class="highlight">Imposter Pictionary</span> is a social deduction version of Pictionary. Every turn, one player draws a word and the others try to guess it as fast as possible.</p>
+          <p>The twist is that one player is secretly the <span class="yellow highlight">Imposter</span>. Normal players want their drawings to be guessed correctly. The Imposter wants the opposite: when the Imposter is drawing, they score by making players fail to guess the word.</p>
+          <p>The fun comes from the tension: the Imposter must draw poorly or misleadingly enough to confuse people, but not so obviously that everyone catches them.</p>
+          <div class="callout">
+            <strong>Core feeling:</strong> “Is this person just bad at drawing, or are they secretly sabotaging the round?”
+          </div>
+        </section>
+
+        <section id="objective">
+          <h2>2. Objective of the Game</h2>
+          <p>The goal is to finish the game with the highest score.</p>
+          <p>Players can earn points in four ways:</p>
+          <ol>
+            <li>Guessing other players’ drawings correctly and quickly.</li>
+            <li>Drawing clearly when they are a normal artist.</li>
+            <li>Confusing others when they are the Imposter artist.</li>
+            <li>Correctly accusing the Imposter and stealing half of their points.</li>
+          </ol>
+          <p>However, reckless accusations are dangerous. A wrong accusation makes the accuser lose half of their own points.</p>
+        </section>
+
+        <section id="terms">
+          <h2>3. Key Terms</h2>
+          <div class="grid-2">
+            <div class="mini-card">
+              <h3>Artist</h3>
+              <p>The player whose turn it is to draw.</p>
+            </div>
+            <div class="mini-card">
+              <h3>Guessers</h3>
+              <p>All players except the current artist.</p>
+            </div>
+            <div class="mini-card">
+              <h3>Imposter</h3>
+              <p>The secret player who scores by making others fail to guess during their own drawing turn.</p>
+            </div>
+            <div class="mini-card">
+              <h3>Cycle</h3>
+              <p>One full rotation where every player has drawn once.</p>
+            </div>
+          </div>
+        </section>
+
+        <section id="setup">
+          <h2>4. Game Setup</h2>
+          <ol>
+            <li>All players join the game.</li>
+            <li>Each player starts with <span class="highlight">0 points</span>.</li>
+            <li>One player is secretly assigned as the <span class="yellow highlight">Imposter</span>.</li>
+            <li>Choose the total number of cycles before starting.</li>
+            <li>The first artist is selected, and the game begins.</li>
+          </ol>
+          <p>Recommended group size is <span class="highlight">5–6 players</span>. Four players is playable but makes deduction easier; seven or eight players is more chaotic and social.</p>
+          <div>
+            <span class="pill">Short game: 2 cycles</span>
+            <span class="pill">Standard game: 3–4 cycles</span>
+            <span class="pill">Long game: 5+ cycles</span>
+          </div>
+        </section>
+
+        <section id="turn-flow">
+          <h2>5. Turn Flow</h2>
+          <p>Each turn lasts exactly <span class="highlight">60 seconds</span>.</p>
+          <ol>
+            <li>The artist receives a word to draw.</li>
+            <li>The 60-second timer starts.</li>
+            <li>The artist draws while the other players submit guesses.</li>
+            <li>Correct guessers receive points based on how fast they guessed.</li>
+            <li>The artist receives points depending on whether they are normal or the Imposter.</li>
+            <li>After the first full cycle, eligible players may accuse the current artist of being the Imposter.</li>
+            <li>The next player becomes the artist.</li>
+          </ol>
+          <div class="example">
+            <strong>Simple example:</strong>
+            <p>In a 6-player game, one player draws and the other 5 players guess. The turn ends after 60 seconds. Then scoring happens and the next player draws.</p>
+          </div>
+        </section>
+
+        <section id="guessing">
+          <h2>6. Guessing Points</h2>
+          <p>Guessers get more points for guessing early. Only the first correct guess by each player counts.</p>
+          <table>
+            <thead>
+              <tr>
+                <th>Time of Correct Guess</th>
+                <th>Points for Guesser</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>0–20 seconds</td>
+                <td><span class="green highlight">30 points</span></td>
+              </tr>
+              <tr>
+                <td>20–40 seconds</td>
+                <td><span class="yellow highlight">20 points</span></td>
+              </tr>
+              <tr>
+                <td>40–60 seconds</td>
+                <td><span class="red highlight">10 points</span></td>
+              </tr>
+              <tr>
+                <td>No correct guess</td>
+                <td>0 points</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="example">
+            <strong>Example:</strong>
+            <p>If the word is “rocket” and a player guesses it correctly at 15 seconds, they get 30 points. If another player guesses it at 42 seconds, they get 10 points. A player who never guesses correctly gets 0.</p>
+          </div>
+        </section>
+
+        <section id="artist-scoring">
+          <h2>7. Normal Artist Scoring</h2>
+          <p>When the artist is not the Imposter, they want as many players as possible to guess correctly.</p>
+          <div class="formula">Normal artist score = 10 × number of correct guessers</div>
+          <div class="example">
+            <strong>Example:</strong>
+            <p>There are 6 players. One player is drawing, so 5 players are guessing. If 4 players guess correctly, the normal artist earns:</p>
+            <p><span class="highlight">10 × 4 = 40 points</span></p>
+            <p>The 4 correct guessers also receive their own timing-based points.</p>
+          </div>
+        </section>
+
+        <section id="imposter-scoring">
+          <h2>8. Imposter Artist Scoring</h2>
+          <p>When the Imposter is the artist, their scoring is reversed. The Imposter wants players to fail to guess the word.</p>
+          <div class="formula">Imposter artist score = 20 × number of failed guessers</div>
+          <p>The Imposter gets double the normal artist value because their role is risky. If they draw too badly, people may accuse them. If they draw too well, they lose the chance to score.</p>
+          <div class="example">
+            <strong>Example:</strong>
+            <p>There are 6 players. One player is drawing, so 5 players are guessing. If only 2 guess correctly and 3 fail, the Imposter earns:</p>
+            <p><span class="highlight">20 × 3 = 60 points</span></p>
+            <p>The 2 correct guessers still receive their timing-based guessing points.</p>
+          </div>
+        </section>
+
+        <section id="accusations">
+          <h2>9. Accusations</h2>
+          <p>Players can accuse the current artist of being the Imposter, but only under specific conditions.</p>
+          <ul>
+            <li>Only the <span class="highlight">current drawer</span> can be accused.</li>
+            <li>Players cannot accuse non-drawing players.</li>
+            <li>Accusations are locked during the first full cycle.</li>
+            <li>After the first cycle, eligible players can accuse during a drawing turn by typing an accusation in the chatbox.</li>
+            <li>If multiple players accuse, only the fastest correct accusation gets the reward.</li>
+          </ul>
+
+          <h3>Correct Accusation</h3>
+          <p>If the accused drawer is actually the Imposter:</p>
+          <ol>
+            <li>The fastest correct accuser steals 50% of the Imposter’s current total points.</li>
+            <li>The Imposter loses those points.</li>
+            <li>A new Imposter is secretly assigned.</li>
+          </ol>
+
+          <h3>Wrong Accusation</h3>
+          <p>If the accused drawer is not the Imposter:</p>
+          <ol>
+            <li>The accuser loses 50% of their own current total points.</li>
+            <li>Nobody else receives those lost points.</li>
+            <li>The game continues normally.</li>
+          </ol>
+
+          <div class="example">
+            <strong>Correct accusation example:</strong>
+            <p>The Imposter has 120 points. A player correctly accuses them first. The accuser steals 60 points. The Imposter drops to 60 points and the accuser gains 60 points.</p>
+          </div>
+          <div class="example">
+            <strong>Wrong accusation example:</strong>
+            <p>A player has 100 points and wrongly accuses the current drawer. They lose 50 points and fall to 50 points. Nobody gains those 50 points.</p>
+          </div>
+        </section>
+
+        <section id="threshold">
+          <h2>10. Minimum Score Needed to Accuse</h2>
+          <p>To prevent early or careless accusations, a player must have enough points before they can accuse.</p>
+          <p>Accusations are also locked until every player has drawn once.</p>
+          <div class="formula">Minimum accusation score = 20 × (number of players − 1) × game-length multiplier</div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Game Length</th>
+                <th>Multiplier</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>2 cycles</td>
+                <td>0.75×</td>
+              </tr>
+              <tr>
+                <td>3–4 cycles</td>
+                <td>1×</td>
+              </tr>
+              <tr>
+                <td>5+ cycles</td>
+                <td>1.25×</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <p>Round the final threshold to the nearest 10 points.</p>
+
+          <h3>Standard 3–4 Cycle Game Thresholds</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Total Players</th>
+                <th>Minimum Score Needed to Accuse</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>4 players</td><td>60 points</td></tr>
+              <tr><td>5 players</td><td>80 points</td></tr>
+              <tr><td>6 players</td><td>100 points</td></tr>
+              <tr><td>7 players</td><td>120 points</td></tr>
+              <tr><td>8 players</td><td>140 points</td></tr>
+            </tbody>
+          </table>
+
+          <div class="example">
+            <strong>Example:</strong>
+            <p>In a 6-player standard game, the threshold is:</p>
+            <p><span class="highlight">20 × (6 − 1) × 1 = 100 points</span></p>
+            <p>So a player needs at least 100 points to accuse after the first full cycle is complete.</p>
+          </div>
+        </section>
+
+        <section id="examples">
+          <h2>11. Full Examples</h2>
+
+          <h3>Example A: Normal Artist Turn</h3>
+          <p>There are 6 players: A, B, C, D, E, and F. Player A is drawing. Players B–F are guessing.</p>
+          <table>
+            <thead>
+              <tr>
+                <th>Player</th>
+                <th>Result</th>
+                <th>Points</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>B</td><td>Correct at 12 seconds</td><td>+30</td></tr>
+              <tr><td>C</td><td>Correct at 28 seconds</td><td>+20</td></tr>
+              <tr><td>D</td><td>Correct at 50 seconds</td><td>+10</td></tr>
+              <tr><td>E</td><td>Wrong / no correct guess</td><td>0</td></tr>
+              <tr><td>F</td><td>Wrong / no correct guess</td><td>0</td></tr>
+            </tbody>
+          </table>
+          <p>Three players guessed correctly. Since A is a normal artist, A gets:</p>
+          <p><span class="highlight">10 × 3 = 30 points</span></p>
+
+          <h3>Example B: Imposter Artist Turn</h3>
+          <p>Now Player C is secretly the Imposter and is drawing. Players A, B, D, E, and F are guessing.</p>
+          <table>
+            <thead>
+              <tr>
+                <th>Player</th>
+                <th>Result</th>
+                <th>Points</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>A</td><td>Correct at 18 seconds</td><td>+30</td></tr>
+              <tr><td>B</td><td>Wrong / no correct guess</td><td>0</td></tr>
+              <tr><td>D</td><td>Wrong / no correct guess</td><td>0</td></tr>
+              <tr><td>E</td><td>Correct at 45 seconds</td><td>+10</td></tr>
+              <tr><td>F</td><td>Wrong / no correct guess</td><td>0</td></tr>
+            </tbody>
+          </table>
+          <p>Three players failed to guess correctly. Since C is the Imposter, C gets:</p>
+          <p><span class="highlight">20 × 3 = 60 points</span></p>
+
+          <h3>Example C: Correct Accusation</h3>
+          <p>Player C, the Imposter, currently has 140 points. Player E suspects C and types an accusation first. If C is truly the Imposter, Player E steals half of C’s score.</p>
+          <div class="score-line"><b>Before:</b><span>C has 140 points.</span></div>
+          <div class="score-line"><b>Stolen:</b><span>50% of 140 = 70 points.</span></div>
+          <div class="score-line"><b>After:</b><span>C drops to 70 points. E gains 70 points.</span></div>
+
+          <h3>Example D: Wrong Accusation</h3>
+          <p>Player B has 90 points and wrongly accuses Player A, who is not the Imposter. Player B loses half of their own points.</p>
+          <div class="score-line"><b>Before:</b><span>B has 90 points.</span></div>
+          <div class="score-line"><b>Lost:</b><span>50% of 90 = 45 points.</span></div>
+          <div class="score-line"><b>After:</b><span>B drops to 45 points. Nobody else gains those points.</span></div>
+        </section>
+
+        <section id="winning">
+          <h2>12. Winning the Game</h2>
+          <p>The game ends after the pre-decided number of cycles.</p>
+          <p>The player with the highest total score wins. This may be a strong guesser, a clear artist, a successful Imposter, or someone who caught the Imposter at the perfect moment.</p>
+          <div class="callout">
+            <strong>Optional final bonus:</strong> If the Imposter remains uncaught at the end of the game, they receive +50 bonus points.
+          </div>
+        </section>
+
+        <section id="defaults">
+          <h2>13. Recommended Default Settings</h2>
+          <p>For the first playtest, use these settings:</p>
+          <table>
+            <tbody>
+              <tr><th>Players</th><td>5–6 players</td></tr>
+              <tr><th>Game length</th><td>3 cycles</td></tr>
+              <tr><th>Drawing time</th><td>60 seconds</td></tr>
+              <tr><th>Guessing score</th><td>0–20s: 30 pts; 20–40s: 20 pts; 40–60s: 10 pts</td></tr>
+              <tr><th>Normal artist score</th><td>+10 points per correct guess</td></tr>
+              <tr><th>Imposter artist score</th><td>+20 points per failed guess</td></tr>
+              <tr><th>Accusation unlock</th><td>After the first full cycle</td></tr>
+              <tr><th>Who can be accused?</th><td>Only the current drawer</td></tr>
+              <tr><th>Correct accusation</th><td>Steal 50% of Imposter’s current points</td></tr>
+              <tr><th>Wrong accusation</th><td>Lose 50% of own current points</td></tr>
+              <tr><th>Minimum accusation score</th><td>20 × (players − 1), adjusted by game length</td></tr>
+            </tbody>
+          </table>
+          <div class="callout">
+            <strong>One-line summary:</strong> Draw well if you are normal, confuse everyone if you are the Imposter, and accuse only when you are confident enough to risk half your score.
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <footer class="footer">
+      Imposter Pictionary — Rules page • Designed for easy learning and playtesting
+    </footer>
+  </div>
+</body>
+</html>
