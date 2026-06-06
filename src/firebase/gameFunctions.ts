@@ -50,6 +50,16 @@ export async function getCurrentWord(roomCodeInput: string) {
   return data.word
 }
 
+export async function getPlayerSecret(roomCodeInput: string) {
+  const roomCode = normalizeRoomCode(roomCodeInput)
+  const getPlayerSecretCallable = httpsCallable<{ roomCode: string }, { isImposter: boolean }>(
+    getFirebaseFunctions(),
+    'getPlayerSecret',
+  )
+  const { data } = await getPlayerSecretCallable({ roomCode })
+  return data
+}
+
 export async function submitGuess(roomCodeInput: string, guessText: string) {
   const roomCode = normalizeRoomCode(roomCodeInput)
   const submitGuessCallable = httpsCallable<

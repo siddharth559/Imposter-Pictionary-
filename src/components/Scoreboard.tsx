@@ -16,7 +16,7 @@ export function Scoreboard({ players = [] }: ScoreboardProps) {
           players.map((player) => (
             <div className="score-row" key={player.id}>
               <span>{player.name}</span>
-              <strong>0</strong>
+              <strong>{player.publicScore ?? 0}</strong>
             </div>
           ))
         ) : (

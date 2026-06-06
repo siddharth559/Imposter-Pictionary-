@@ -110,6 +110,12 @@ p {
   gap: 10px;
 }
 
+.game-page--imposter {
+  background:
+    linear-gradient(180deg, rgba(217, 61, 79, 0.12), transparent 320px),
+    transparent;
+}
+
 .hero-panel {
   padding: 28px 2px 4px;
 }
@@ -180,6 +186,55 @@ p {
   display: block;
   color: var(--ink);
   font-size: 18px;
+}
+
+.imposter-alert,
+.turn-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.imposter-alert {
+  border-color: rgba(217, 61, 79, 0.42);
+  background: #fff0f2;
+}
+
+.imposter-alert > span {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  color: #ffffff;
+  background: var(--red);
+  font-size: 36px;
+  font-weight: 950;
+}
+
+.imposter-alert strong,
+.turn-status strong {
+  display: block;
+  font-size: 18px;
+}
+
+.turn-status--artist {
+  border-color: rgba(37, 168, 90, 0.55);
+  background: #effbf4;
+}
+
+.turn-status > span {
+  color: #16804a;
+  font-size: 13px;
+  font-weight: 850;
+  text-align: right;
 }
 
 .home-actions {
@@ -293,6 +348,9 @@ p {
 }
 
 .drawing-canvas--active {
+  border-width: 6px;
+  border-color: #25a85a;
+  box-shadow: 0 0 0 4px rgba(37, 168, 90, 0.16);
   cursor: crosshair;
 }
 

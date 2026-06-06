@@ -27,7 +27,7 @@ const WORDS = [
   'cactus',
 ]
 const callableOptions = {
-  cors: ['https://siddharth559.github.io', 'http://localhost:5173'],
+  cors: true,
 }
 
 type RoomPlayer = {
@@ -64,6 +64,24 @@ type PrivateRoom = {
   correctGuessers?: Record<string, Record<string, true>>
   endedRounds?: Record<string, true>
   correctAccusations?: Record<string, string>
+}
+
+function createChatMessageId(roomCode: string, roundId: string) {
+  const messageId = db.ref(`rooms/${roomCode}/chat/${roundId}`).push().key
+  if (!messageId) throw new HttpsError('internal', 'Could not create chat message.')
+  return messageId
+}
+
+function drawingMessageUpdate(roomCode: string, roundId: string, artist: RoomPlayer) {
+  return {
+    [`rooms/${roomCode}/chat/${roundId}/${createChatMessageId(roomCode, roundId)}`]: {
+      uid: 'system',
+      playerName: 'System',
+      kind: 'system',
+      text: `${artist.name} is drawing`,
+      createdAt: Date.now(),
+    },
+  }
 }
 
 function requireUid(auth?: { uid: string }) {
@@ -173,6 +191,8 @@ export const startGame = onCall(callableOptions, async (request) => {
   const currentTurnIndex = 0
   const currentCycle = 1
   const currentArtistId = turnOrder[currentTurnIndex]
+  const currentArtist = room.players?.[currentArtistId]
+  if (!currentArtist) throw new HttpsError('failed-precondition', 'Current artist is missing.')
   const { turnStartedAt, turnEndsAt } = turnTiming(room)
   const roundId = createRoundId(currentCycle, currentTurnIndex)
 
@@ -191,6 +211,7 @@ export const startGame = onCall(callableOptions, async (request) => {
       currentWord: randomWord(),
       createdAt: Date.now(),
     },
+    ...drawingMessageUpdate(roomCode, roundId, currentArtist),
   })
 
   return { roundId, currentArtistId }
@@ -209,6 +230,8 @@ export const startNextTurn = onCall(callableOptions, async (request) => {
   if (turnOrder.length > MAX_PLAYERS) throw new HttpsError('failed-precondition', 'Maximum 8 players.')
 
   const { nextTurnIndex, nextCycle, nextArtistId } = nextTurnState(room, turnOrder)
+  const nextArtist = room.players?.[nextArtistId]
+  if (!nextArtist) throw new HttpsError('failed-precondition', 'Next artist is missing.')
   const { turnStartedAt, turnEndsAt } = turnTiming(room)
   const roundId = createRoundId(nextCycle, nextTurnIndex)
 
@@ -222,6 +245,7 @@ export const startNextTurn = onCall(callableOptions, async (request) => {
     [`rooms/${roomCode}/accusationsUnlocked`]: nextCycle > 1,
     [`privateRooms/${roomCode}/turnOrder`]: turnOrder,
     [`privateRooms/${roomCode}/currentWord`]: randomWord(),
+    ...drawingMessageUpdate(roomCode, roundId, nextArtist),
   })
 
   return { roundId, currentArtistId: nextArtistId }
@@ -285,6 +309,8 @@ export const endCurrentTurn = onCall(callableOptions, async (request) => {
   } else {
     const { turnStartedAt, turnEndsAt } = turnTiming(room)
     const nextRoundId = createRoundId(nextCycle, nextTurnIndex)
+    const nextArtist = room.players?.[nextArtistId]
+    if (!nextArtist) throw new HttpsError('failed-precondition', 'Next artist is missing.')
     updates[`rooms/${roomCode}/currentArtistId`] = nextArtistId
     updates[`rooms/${roomCode}/currentTurnIndex`] = nextTurnIndex
     updates[`rooms/${roomCode}/currentCycle`] = nextCycle
@@ -293,6 +319,7 @@ export const endCurrentTurn = onCall(callableOptions, async (request) => {
     updates[`rooms/${roomCode}/roundId`] = nextRoundId
     updates[`rooms/${roomCode}/accusationsUnlocked`] = nextCycle > 1
     updates[`privateRooms/${roomCode}/currentWord`] = randomWord()
+    Object.assign(updates, drawingMessageUpdate(roomCode, nextRoundId, nextArtist))
   }
 
   await db.ref().update(updates)
@@ -318,6 +345,19 @@ export const getCurrentWord = onCall(callableOptions, async (request) => {
   }
 
   return { word: privateRoom.currentWord ?? null }
+})
+
+export const getPlayerSecret = onCall(callableOptions, async (request) => {
+  const uid = requireUid(request.auth)
+  const roomCode = normalizeRoomCode(request.data?.roomCode)
+  const [room, privateRoom] = await Promise.all([getRoom(roomCode), getPrivateRoom(roomCode)])
+
+  if (!room.players?.[uid]) throw new HttpsError('permission-denied', 'Join the room before requesting role details.')
+  if (room.status !== 'playing') return { isImposter: false }
+
+  return {
+    isImposter: privateRoom.imposterId === uid,
+  }
 })
 
 export const submitGuess = onCall(callableOptions, async (request) => {
