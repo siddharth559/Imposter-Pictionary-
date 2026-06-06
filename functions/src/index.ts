@@ -26,6 +26,9 @@ const WORDS = [
   'treasure',
   'cactus',
 ]
+const callableOptions = {
+  cors: ['https://siddharth559.github.io', 'http://localhost:5173'],
+}
 
 type RoomPlayer = {
   name: string
@@ -158,7 +161,7 @@ function validateStartRoom(uid: string, room: Room) {
   if (playerCount > MAX_PLAYERS) throw new HttpsError('failed-precondition', 'Maximum 8 players.')
 }
 
-export const startGame = onCall(async (request) => {
+export const startGame = onCall(callableOptions, async (request) => {
   const uid = requireUid(request.auth)
   const roomCode = normalizeRoomCode(request.data?.roomCode)
   const room = await getRoom(roomCode)
@@ -193,7 +196,7 @@ export const startGame = onCall(async (request) => {
   return { roundId, currentArtistId }
 })
 
-export const startNextTurn = onCall(async (request) => {
+export const startNextTurn = onCall(callableOptions, async (request) => {
   const uid = requireUid(request.auth)
   const roomCode = normalizeRoomCode(request.data?.roomCode)
   const [room, privateRoom] = await Promise.all([getRoom(roomCode), getPrivateRoom(roomCode)])
@@ -224,7 +227,7 @@ export const startNextTurn = onCall(async (request) => {
   return { roundId, currentArtistId: nextArtistId }
 })
 
-export const endCurrentTurn = onCall(async (request) => {
+export const endCurrentTurn = onCall(callableOptions, async (request) => {
   const uid = requireUid(request.auth)
   const roomCode = normalizeRoomCode(request.data?.roomCode)
   const [room, privateRoom] = await Promise.all([getRoom(roomCode), getPrivateRoom(roomCode)])
@@ -304,7 +307,7 @@ export const endCurrentTurn = onCall(async (request) => {
   }
 })
 
-export const getCurrentWord = onCall(async (request) => {
+export const getCurrentWord = onCall(callableOptions, async (request) => {
   const uid = requireUid(request.auth)
   const roomCode = normalizeRoomCode(request.data?.roomCode)
   const [room, privateRoom] = await Promise.all([getRoom(roomCode), getPrivateRoom(roomCode)])
@@ -317,7 +320,7 @@ export const getCurrentWord = onCall(async (request) => {
   return { word: privateRoom.currentWord ?? null }
 })
 
-export const submitGuess = onCall(async (request) => {
+export const submitGuess = onCall(callableOptions, async (request) => {
   const uid = requireUid(request.auth)
   const roomCode = normalizeRoomCode(request.data?.roomCode)
   const guessText = cleanGuess(request.data?.guessText)
@@ -383,7 +386,7 @@ export const submitGuess = onCall(async (request) => {
   return { correct: true, points }
 })
 
-export const accuseCurrentArtist = onCall(async (request) => {
+export const accuseCurrentArtist = onCall(callableOptions, async (request) => {
   const uid = requireUid(request.auth)
   const roomCode = normalizeRoomCode(request.data?.roomCode)
   const [room, privateRoom] = await Promise.all([getRoom(roomCode), getPrivateRoom(roomCode)])
