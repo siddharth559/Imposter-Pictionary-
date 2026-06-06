@@ -28,6 +28,7 @@ const WORDS = [
 ]
 const callableOptions = {
   cors: true,
+  invoker: 'public',
 }
 
 type RoomPlayer = {
