@@ -35,7 +35,10 @@ export function GamePage() {
   const { room } = useRoom(roomCode)
   const [error, setError] = useState<string | null>(null)
   const [now, setNow] = useState(Date.now())
+  const [pointsToast, setPointsToast] = useState<{ id: number; points: number } | null>(null)
   const endingRoundRef = useRef<string | null>(null)
+  const previousActualScoreRef = useRef<number | null>(null)
+  const pointsToastTimerRef = useRef<number | null>(null)
   const roundId = room?.roundId ?? 'round-1'
   const currentArtistId = room?.currentArtistId
   const currentWord = useCurrentWord(roomCode, room, user?.uid)
@@ -97,6 +100,35 @@ export function GamePage() {
   }, [])
 
   useEffect(() => {
+    if (!currentPlayer) {
+      previousActualScoreRef.current = null
+      return undefined
+    }
+
+    const previousScore = previousActualScoreRef.current
+    previousActualScoreRef.current = actualScore
+
+    if (previousScore === null || actualScore <= previousScore) return undefined
+
+    const pointsWon = actualScore - previousScore
+    setPointsToast({ id: Date.now(), points: pointsWon })
+
+    if (pointsToastTimerRef.current) window.clearTimeout(pointsToastTimerRef.current)
+    pointsToastTimerRef.current = window.setTimeout(() => {
+      setPointsToast(null)
+      pointsToastTimerRef.current = null
+    }, 2400)
+
+    return undefined
+  }, [actualScore, currentPlayer])
+
+  useEffect(() => {
+    return () => {
+      if (pointsToastTimerRef.current) window.clearTimeout(pointsToastTimerRef.current)
+    }
+  }, [])
+
+  useEffect(() => {
     if (room?.status !== 'playing' || !room.roundId || !room.turnEndsAt || now < room.turnEndsAt) return
     if (endingRoundRef.current === room.roundId) return
 
@@ -123,6 +155,11 @@ export function GamePage() {
 
   return (
     <main className={isImposter ? 'game-page game-page--imposter' : 'game-page'}>
+      {pointsToast ? (
+        <div className="points-toast" key={pointsToast.id} role="status" aria-live="polite">
+          <strong>You won {pointsToast.points} points</strong>
+        </div>
+      ) : null}
       <header className="game-mobile-topbar">
         {rulesButton}
         <ActualPointsCard points={actualScore} />

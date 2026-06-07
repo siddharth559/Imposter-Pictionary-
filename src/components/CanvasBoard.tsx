@@ -95,7 +95,7 @@ export function CanvasBoard({
 
     event.preventDefault()
     event.currentTarget.setPointerCapture(event.pointerId)
-    lockPageScroll()
+    lockPageScroll(event.pointerType)
 
     const strokeId = createStrokeId(roomCode, roundId)
     if (!strokeId) return
@@ -159,7 +159,8 @@ export function CanvasBoard({
     await clearRoundStrokes(roomCode, roundId)
   }
 
-  function lockPageScroll() {
+  function lockPageScroll(pointerType: string) {
+    if (pointerType !== 'touch') return
     if (originalBodyOverflowRef.current !== null) return
     originalBodyOverflowRef.current = document.body.style.overflow
     document.body.style.overflow = 'hidden'

@@ -116,6 +116,49 @@ p {
     transparent;
 }
 
+.points-toast {
+  position: fixed;
+  top: 18px;
+  left: 50%;
+  z-index: 20;
+  width: min(calc(100% - 32px), 360px);
+  padding: 14px 18px;
+  border: 1px solid rgba(37, 168, 90, 0.3);
+  border-radius: 8px;
+  color: #0b5b32;
+  background: #effbf4;
+  box-shadow: 0 18px 42px rgba(12, 35, 24, 0.18);
+  text-align: center;
+  transform: translateX(-50%);
+  animation: points-toast-fade 2.4s ease forwards;
+}
+
+.points-toast strong {
+  font-size: 18px;
+}
+
+@keyframes points-toast-fade {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -12px);
+  }
+
+  14% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+
+  72% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -10px);
+  }
+}
+
 .hero-panel {
   padding: 28px 2px 4px;
 }
