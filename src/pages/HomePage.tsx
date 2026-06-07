@@ -1,6 +1,7 @@
 import { FormEvent, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { createRoom, joinRoom, normalizeRoomCode, PLAYER_NAME_STORAGE_KEY } from '../firebase/rooms'
+import { createRoom, joinRoom, normalizeCycles, normalizeRoomCode, PLAYER_NAME_STORAGE_KEY } from '../firebase/rooms'
+import { DEFAULT_CYCLES, MAX_CYCLES, MIN_CYCLES } from '../game/constants'
 
 export function HomePage() {
   const navigate = useNavigate()
@@ -8,6 +9,7 @@ export function HomePage() {
     () => localStorage.getItem(PLAYER_NAME_STORAGE_KEY) ?? '',
   )
   const [roomCode, setRoomCode] = useState('')
+  const [cycles, setCycles] = useState(DEFAULT_CYCLES)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -16,7 +18,7 @@ export function HomePage() {
     setIsSubmitting(true)
     setError(null)
     try {
-      const nextRoomCode = await createRoom(playerName)
+      const nextRoomCode = await createRoom(playerName, cycles)
       navigate(`/lobby/${nextRoomCode}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not create room.')
@@ -63,6 +65,16 @@ export function HomePage() {
         </label>
 
         <form className="stack" onSubmit={handleCreateRoom}>
+          <label>
+            Drawing rounds
+            <input
+              type="number"
+              min={MIN_CYCLES}
+              max={MAX_CYCLES}
+              value={cycles}
+              onChange={(event) => setCycles(normalizeCycles(Number(event.target.value)))}
+            />
+          </label>
           <button className="primary-button" type="submit" disabled={isSubmitting}>
             Create Room
           </button>

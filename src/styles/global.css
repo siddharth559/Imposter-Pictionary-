@@ -645,6 +645,17 @@ p {
     grid-template-columns: 1.1fr 0.9fr;
     align-items: center;
     max-width: 1040px;
+    gap: 48px;
+  }
+
+  .home-page .hero-panel {
+    padding-right: 24px;
+  }
+
+  .home-page .hero-panel h1 {
+    max-width: 12ch;
+    margin-bottom: 18px;
+    line-height: 0.98;
   }
 
   .hero-panel h1,

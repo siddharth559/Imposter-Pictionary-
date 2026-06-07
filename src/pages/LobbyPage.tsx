@@ -101,6 +101,10 @@ export function LobbyPage() {
           <p className="section-label">Room code</p>
           <strong className="room-code">{roomCode}</strong>
         </div>
+        <div>
+          <p className="section-label">Rounds</p>
+          <strong>{room.settings.cycles}</strong>
+        </div>
         <button type="button" onClick={handleShareRoom}>
           {shareStatus || 'Share / Copy'}
         </button>

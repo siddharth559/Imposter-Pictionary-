@@ -2,7 +2,7 @@ import { get, onDisconnect, onValue, ref, set, update } from 'firebase/database'
 import type { User } from 'firebase/auth'
 import { getFirebaseDatabase } from './client'
 import { signInGuest } from './auth'
-import { DEFAULT_CYCLES, DEFAULT_TURN_SECONDS, MAX_PLAYERS } from '../game/constants'
+import { DEFAULT_CYCLES, DEFAULT_TURN_SECONDS, MAX_CYCLES, MAX_PLAYERS, MIN_CYCLES } from '../game/constants'
 import type { Room } from '../game/types'
 
 const ROOM_CODE_LENGTH = 5
@@ -15,6 +15,11 @@ export function normalizeRoomCode(roomCode: string) {
 
 export function normalizePlayerName(playerName: string) {
   return playerName.trim().slice(0, 18) || 'Player'
+}
+
+export function normalizeCycles(cycles: number) {
+  if (!Number.isFinite(cycles)) return DEFAULT_CYCLES
+  return Math.max(MIN_CYCLES, Math.min(MAX_CYCLES, Math.round(cycles)))
 }
 
 export function generateRoomCode() {
@@ -48,8 +53,9 @@ async function getAvailableRoomCode() {
   throw new Error('Could not generate a unique room code. Please try again.')
 }
 
-export async function createRoom(playerNameInput: string) {
+export async function createRoom(playerNameInput: string, cyclesInput = DEFAULT_CYCLES) {
   const playerName = normalizePlayerName(playerNameInput)
+  const cycles = normalizeCycles(cyclesInput)
   const user = await ensureGuestUser()
   const roomCode = await getAvailableRoomCode()
   const database = getFirebaseDatabase()
@@ -62,7 +68,7 @@ export async function createRoom(playerNameInput: string) {
     hostId: user.uid,
     createdAt: now,
     settings: {
-      cycles: DEFAULT_CYCLES,
+      cycles,
       turnSeconds: DEFAULT_TURN_SECONDS,
       maxPlayers: MAX_PLAYERS,
     },
