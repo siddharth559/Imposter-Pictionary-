@@ -90,7 +90,7 @@ export function LobbyPage() {
   }
 
   return (
-    <main className="page-shell">
+    <main className="page-shell lobby-page">
       <header className="page-header">
         <p className="eyebrow">Lobby</p>
         <h1>{roomCode}</h1>
@@ -119,11 +119,11 @@ export function LobbyPage() {
         </button>
       </section>
 
-      <PlayerSlotList players={players} />
+      <PlayerSlotList players={players} className="lobby-player-list" />
 
-      <p className="creator-credit">
-        Developed by Siddharth Acharya, with assistance from Codex and ChatGPT.
-      </p>
+      <footer className="creator-credit-panel">
+        Developed by Siddharth Acharya with help from Codex and ChatGPT.
+      </footer>
 
       <nav className="bottom-actions">
         {isHost ? (

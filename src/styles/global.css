@@ -230,7 +230,7 @@ p {
 }
 
 .feedback-status,
-.creator-credit {
+.creator-credit-panel {
   margin: 0;
   color: var(--muted);
   font-size: 13px;
@@ -717,6 +717,13 @@ p {
   flex-wrap: wrap;
 }
 
+.creator-credit-panel {
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.62);
+}
+
 .room-code {
   display: block;
   color: var(--ink);
@@ -782,20 +789,7 @@ p {
 
 @media (min-width: 760px) {
   .home-page {
-    grid-template-columns: minmax(0, 0.95fr) minmax(430px, 1.05fr);
-    align-items: center;
-    max-width: 1120px;
-    gap: 48px;
-  }
-
-  .home-page .hero-panel {
-    padding-right: 24px;
-  }
-
-  .home-page .hero-panel h1 {
-    max-width: 12ch;
-    margin-bottom: 18px;
-    line-height: 0.98;
+    max-width: 680px;
   }
 
   .hero-panel h1,
@@ -812,7 +806,85 @@ p {
   }
 }
 
+@media (min-width: 980px) {
+  .home-page {
+    width: min(100%, 1120px);
+    grid-template-columns: minmax(360px, 440px) minmax(460px, 520px);
+    align-items: center;
+    justify-content: center;
+    gap: 72px;
+  }
+
+  .home-page .hero-panel {
+    padding-right: 0;
+  }
+
+  .home-page .hero-panel h1 {
+    max-width: 10ch;
+    margin-bottom: 18px;
+    font-size: 64px;
+    line-height: 0.98;
+  }
+
+  .home-actions {
+    width: 100%;
+  }
+}
+
 @media (min-width: 900px) {
+  .lobby-page {
+    width: min(100%, 1040px);
+    max-width: 1040px;
+    grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+    grid-template-areas:
+      "header players"
+      "details players"
+      "actions credit"
+      "error error";
+    align-content: center;
+    align-items: start;
+    gap: 16px;
+  }
+
+  .lobby-page .page-header {
+    grid-area: header;
+  }
+
+  .lobby-page .room-card {
+    grid-area: details;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+  }
+
+  .lobby-page .room-card > div:first-child,
+  .lobby-page .room-card > button {
+    grid-column: 1 / -1;
+  }
+
+  .lobby-page .room-card > button {
+    width: 100%;
+  }
+
+  .lobby-player-list {
+    grid-area: players;
+  }
+
+  .lobby-page .bottom-actions {
+    grid-area: actions;
+  }
+
+  .lobby-page .creator-credit-panel {
+    grid-area: credit;
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+  }
+
+  .lobby-page > .form-error {
+    grid-area: error;
+  }
+
   .game-page {
     width: min(100%, 1180px);
     grid-template-columns: 230px minmax(0, 1fr) 240px;

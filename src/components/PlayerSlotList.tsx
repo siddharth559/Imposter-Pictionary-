@@ -2,11 +2,12 @@ import type { PlayerSlot } from '../game/types'
 
 type PlayerSlotListProps = {
   players?: PlayerSlot[]
+  className?: string
 }
 
-export function PlayerSlotList({ players = [] }: PlayerSlotListProps) {
+export function PlayerSlotList({ players = [], className }: PlayerSlotListProps) {
   return (
-    <section className="panel" aria-label="Players">
+    <section className={className ? `panel ${className}` : 'panel'} aria-label="Players">
       <div className="panel-heading">
         <p className="section-label">Players</p>
         <strong>{players.length}</strong>
