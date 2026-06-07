@@ -1,7 +1,15 @@
 import { FormEvent, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { createRoom, joinRoom, normalizeCycles, normalizeRoomCode, PLAYER_NAME_STORAGE_KEY } from '../firebase/rooms'
-import { DEFAULT_CYCLES, MAX_CYCLES, MIN_CYCLES } from '../game/constants'
+import {
+  createRoom,
+  joinRoom,
+  normalizeCycles,
+  normalizeMaxPlayers,
+  normalizeRoomCode,
+  normalizeWordCorpus,
+  PLAYER_NAME_STORAGE_KEY,
+} from '../firebase/rooms'
+import { DEFAULT_CYCLES, MAX_CYCLES, MAX_PLAYERS, MIN_CYCLES, MIN_PLAYERS } from '../game/constants'
 
 export function HomePage() {
   const navigate = useNavigate()
@@ -10,15 +18,24 @@ export function HomePage() {
   )
   const [roomCode, setRoomCode] = useState('')
   const [cycles, setCycles] = useState(DEFAULT_CYCLES)
+  const [maxPlayers, setMaxPlayers] = useState(MAX_PLAYERS)
+  const [wordCorpusText, setWordCorpusText] = useState('')
+  const [useOnlyCorpus, setUseOnlyCorpus] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const validCustomWords = normalizeWordCorpus(wordCorpusText)
 
   async function handleCreateRoom(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setIsSubmitting(true)
     setError(null)
     try {
-      const nextRoomCode = await createRoom(playerName, cycles)
+      const nextRoomCode = await createRoom(playerName, {
+        cycles,
+        maxPlayers,
+        wordCorpusText,
+        useOnlyCorpus,
+      })
       navigate(`/lobby/${nextRoomCode}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not create room.')
@@ -74,6 +91,35 @@ export function HomePage() {
               value={cycles}
               onChange={(event) => setCycles(normalizeCycles(Number(event.target.value)))}
             />
+          </label>
+          <label>
+            Number of players
+            <input
+              type="number"
+              min={MIN_PLAYERS}
+              max={MAX_PLAYERS}
+              value={maxPlayers}
+              onChange={(event) => setMaxPlayers(normalizeMaxPlayers(Number(event.target.value)))}
+            />
+          </label>
+          <label>
+            Word corpus
+            <textarea
+              value={wordCorpusText}
+              onChange={(event) => setWordCorpusText(event.target.value)}
+              placeholder="cat, moon, ship, kite"
+              rows={4}
+            />
+            <span className="field-hint">{validCustomWords.length} usable words, 3-5 letters only</span>
+          </label>
+          <label className="toggle-label">
+            <input
+              type="checkbox"
+              checked={useOnlyCorpus}
+              disabled={validCustomWords.length === 0}
+              onChange={(event) => setUseOnlyCorpus(event.target.checked)}
+            />
+            Use only my words
           </label>
           <button className="primary-button" type="submit" disabled={isSubmitting}>
             Create Room

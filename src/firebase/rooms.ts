@@ -2,12 +2,27 @@ import { get, onDisconnect, onValue, ref, set, update } from 'firebase/database'
 import type { User } from 'firebase/auth'
 import { getFirebaseDatabase } from './client'
 import { signInGuest } from './auth'
-import { DEFAULT_CYCLES, DEFAULT_TURN_SECONDS, MAX_CYCLES, MAX_PLAYERS, MIN_CYCLES } from '../game/constants'
+import {
+  DEFAULT_CYCLES,
+  DEFAULT_TURN_SECONDS,
+  MAX_CUSTOM_WORDS,
+  MAX_CYCLES,
+  MAX_PLAYERS,
+  MIN_CYCLES,
+  MIN_PLAYERS,
+} from '../game/constants'
 import type { Room } from '../game/types'
 
 const ROOM_CODE_LENGTH = 5
 const ROOM_CODE_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 export const PLAYER_NAME_STORAGE_KEY = 'imposter-pictionary-player-name'
+
+export type CreateRoomSettingsInput = {
+  cycles?: number
+  maxPlayers?: number
+  wordCorpusText?: string
+  useOnlyCorpus?: boolean
+}
 
 export function normalizeRoomCode(roomCode: string) {
   return roomCode.replace(/[^a-z]/gi, '').toUpperCase().slice(0, ROOM_CODE_LENGTH)
@@ -20,6 +35,22 @@ export function normalizePlayerName(playerName: string) {
 export function normalizeCycles(cycles: number) {
   if (!Number.isFinite(cycles)) return DEFAULT_CYCLES
   return Math.max(MIN_CYCLES, Math.min(MAX_CYCLES, Math.round(cycles)))
+}
+
+export function normalizeMaxPlayers(maxPlayers: number) {
+  if (!Number.isFinite(maxPlayers)) return MAX_PLAYERS
+  return Math.max(MIN_PLAYERS, Math.min(MAX_PLAYERS, Math.round(maxPlayers)))
+}
+
+export function normalizeWordCorpus(wordCorpusText: string) {
+  return Array.from(
+    new Set(
+      wordCorpusText
+        .split(/[^a-zA-Z]+/)
+        .map((word) => word.toLowerCase().replace(/[^a-z]/g, ''))
+        .filter((word) => word.length >= 3 && word.length <= 5),
+    ),
+  ).slice(0, MAX_CUSTOM_WORDS)
 }
 
 export function generateRoomCode() {
@@ -53,9 +84,11 @@ async function getAvailableRoomCode() {
   throw new Error('Could not generate a unique room code. Please try again.')
 }
 
-export async function createRoom(playerNameInput: string, cyclesInput = DEFAULT_CYCLES) {
+export async function createRoom(playerNameInput: string, settingsInput: CreateRoomSettingsInput = {}) {
   const playerName = normalizePlayerName(playerNameInput)
-  const cycles = normalizeCycles(cyclesInput)
+  const cycles = normalizeCycles(settingsInput.cycles ?? DEFAULT_CYCLES)
+  const maxPlayers = normalizeMaxPlayers(settingsInput.maxPlayers ?? MAX_PLAYERS)
+  const wordCorpus = normalizeWordCorpus(settingsInput.wordCorpusText ?? '')
   const user = await ensureGuestUser()
   const roomCode = await getAvailableRoomCode()
   const database = getFirebaseDatabase()
@@ -70,7 +103,9 @@ export async function createRoom(playerNameInput: string, cyclesInput = DEFAULT_
     settings: {
       cycles,
       turnSeconds: DEFAULT_TURN_SECONDS,
-      maxPlayers: MAX_PLAYERS,
+      maxPlayers,
+      wordCorpus,
+      useOnlyCorpus: Boolean(settingsInput.useOnlyCorpus && wordCorpus.length > 0),
     },
     players: {
       [user.uid]: {

@@ -9,22 +9,78 @@ const MIN_PLAYERS = 4
 const MAX_PLAYERS = 8
 const DEFAULT_TURN_SECONDS = 60
 const WORDS = [
-  'rocket',
-  'pancake',
-  'dragon',
-  'umbrella',
-  'volcano',
-  'camera',
-  'sandcastle',
-  'bicycle',
-  'telescope',
-  'waterfall',
-  'backpack',
-  'snowman',
-  'lighthouse',
-  'guitar',
-  'treasure',
-  'cactus',
+  'ant',
+  'ape',
+  'arm',
+  'bag',
+  'bat',
+  'bed',
+  'bee',
+  'bell',
+  'bird',
+  'boat',
+  'book',
+  'boot',
+  'bowl',
+  'bus',
+  'cake',
+  'camp',
+  'cap',
+  'car',
+  'card',
+  'cat',
+  'coin',
+  'comb',
+  'crown',
+  'cup',
+  'desk',
+  'dog',
+  'door',
+  'drum',
+  'duck',
+  'ear',
+  'eye',
+  'fan',
+  'fish',
+  'flag',
+  'frog',
+  'gift',
+  'goat',
+  'hat',
+  'hen',
+  'hill',
+  'hook',
+  'jar',
+  'key',
+  'kite',
+  'lamp',
+  'leaf',
+  'lock',
+  'moon',
+  'mop',
+  'nail',
+  'nest',
+  'nose',
+  'pan',
+  'pear',
+  'pen',
+  'pie',
+  'pig',
+  'ring',
+  'road',
+  'rock',
+  'rope',
+  'ship',
+  'shoe',
+  'snow',
+  'sock',
+  'star',
+  'sun',
+  'tent',
+  'tree',
+  'web',
+  'wheel',
+  'wing',
 ]
 const callableOptions = {
   cors: true,
@@ -47,6 +103,8 @@ type Room = {
     cycles?: number
     turnSeconds?: number
     maxPlayers?: number
+    wordCorpus?: string[]
+    useOnlyCorpus?: boolean
   }
   players?: Record<string, RoomPlayer>
   currentArtistId?: string
@@ -56,6 +114,7 @@ type Room = {
   turnEndsAt?: number
   roundId?: string
   accusationsUnlocked?: boolean
+  caughtImposterRounds?: Record<string, true>
   nextTurnVotes?: Record<string, Record<string, true>>
 }
 
@@ -66,6 +125,7 @@ type PrivateRoom = {
   correctGuessers?: Record<string, Record<string, true>>
   endedRounds?: Record<string, true>
   correctAccusations?: Record<string, string>
+  usedWords?: Record<string, true>
 }
 
 function createChatMessageId(roomCode: string, roundId: string) {
@@ -123,12 +183,40 @@ function shuffle<T>(items: T[]) {
   return shuffled
 }
 
-function randomWord() {
-  return WORDS[Math.floor(Math.random() * WORDS.length)]
-}
-
 function wordLength(word?: string | null) {
   return (word ?? '').length
+}
+
+function normalizeWord(value: unknown) {
+  return typeof value === 'string' ? value.toLowerCase().replace(/[^a-z]/g, '') : ''
+}
+
+function uniqueValidWords(words: unknown[] = []) {
+  return Array.from(
+    new Set(
+      words
+        .map(normalizeWord)
+        .filter((word) => word.length >= 3 && word.length <= 5),
+    ),
+  )
+}
+
+function wordPool(room: Room) {
+  const customWords = uniqueValidWords(room.settings?.wordCorpus ?? [])
+  if (room.settings?.useOnlyCorpus && customWords.length > 0) return customWords
+  return uniqueValidWords([...customWords, ...WORDS])
+}
+
+function selectNextWord(room: Room, privateRoom: PrivateRoom) {
+  const pool = wordPool(room)
+  const usedWords = privateRoom.usedWords ?? {}
+  const availableWords = pool.filter((word) => !usedWords[word])
+
+  if (availableWords.length === 0) {
+    throw new HttpsError('failed-precondition', 'The word pool is exhausted. Add more 3-5 letter words.')
+  }
+
+  return availableWords[Math.floor(Math.random() * availableWords.length)]
 }
 
 function cleanGuess(guessText: unknown) {
@@ -222,7 +310,7 @@ async function finishTurn(roomCode: string, room: Room, privateRoom: PrivateRoom
     const nextRoundId = createRoundId(nextCycle, nextTurnIndex)
     const nextArtist = room.players?.[nextArtistId]
     if (!nextArtist) throw new HttpsError('failed-precondition', 'Next artist is missing.')
-    const nextWord = randomWord()
+    const nextWord = selectNextWord(room, privateRoom)
     updates[`rooms/${roomCode}/currentArtistId`] = nextArtistId
     updates[`rooms/${roomCode}/currentTurnIndex`] = nextTurnIndex
     updates[`rooms/${roomCode}/currentCycle`] = nextCycle
@@ -232,6 +320,7 @@ async function finishTurn(roomCode: string, room: Room, privateRoom: PrivateRoom
     updates[`rooms/${roomCode}/wordLength`] = wordLength(nextWord)
     updates[`rooms/${roomCode}/accusationsUnlocked`] = nextCycle > 1
     updates[`privateRooms/${roomCode}/currentWord`] = nextWord
+    updates[`privateRooms/${roomCode}/usedWords/${nextWord}`] = true
     Object.assign(updates, drawingMessageUpdate(roomCode, nextRoundId, nextArtist))
   }
 
@@ -266,6 +355,19 @@ function validateStartRoom(uid: string, room: Room) {
   const playerCount = Object.keys(room.players ?? {}).length
   if (playerCount < MIN_PLAYERS) throw new HttpsError('failed-precondition', 'Need at least 4 players.')
   if (playerCount > MAX_PLAYERS) throw new HttpsError('failed-precondition', 'Maximum 8 players.')
+  if (playerCount > (room.settings?.maxPlayers ?? MAX_PLAYERS)) {
+    throw new HttpsError('failed-precondition', 'This room is already above its player limit.')
+  }
+
+  const selectedCycles = room.settings?.cycles ?? 3
+  const requiredWords = playerCount * selectedCycles
+  const availableWords = wordPool(room).length
+  if (availableWords < requiredWords) {
+    throw new HttpsError(
+      'failed-precondition',
+      `Need at least ${requiredWords} unique 3-5 letter words for this game. Current pool has ${availableWords}.`,
+    )
+  }
 }
 
 export const startGame = onCall(callableOptions, async (request) => {
@@ -282,7 +384,7 @@ export const startGame = onCall(callableOptions, async (request) => {
   const currentArtistId = turnOrder[currentTurnIndex]
   const currentArtist = room.players?.[currentArtistId]
   if (!currentArtist) throw new HttpsError('failed-precondition', 'Current artist is missing.')
-  const currentWord = randomWord()
+  const currentWord = selectNextWord(room, {})
   const { turnStartedAt, turnEndsAt } = turnTiming(room)
   const roundId = createRoundId(currentCycle, currentTurnIndex)
 
@@ -296,10 +398,14 @@ export const startGame = onCall(callableOptions, async (request) => {
     [`rooms/${roomCode}/roundId`]: roundId,
     [`rooms/${roomCode}/wordLength`]: wordLength(currentWord),
     [`rooms/${roomCode}/accusationsUnlocked`]: false,
+    [`rooms/${roomCode}/caughtImposterRounds`]: null,
     [`privateRooms/${roomCode}`]: {
       imposterId,
       turnOrder,
       currentWord,
+      usedWords: {
+        [currentWord]: true,
+      },
       createdAt: Date.now(),
     },
     ...drawingMessageUpdate(roomCode, roundId, currentArtist),
@@ -323,7 +429,7 @@ export const startNextTurn = onCall(callableOptions, async (request) => {
   const { nextTurnIndex, nextCycle, nextArtistId } = nextTurnState(room, turnOrder)
   const nextArtist = room.players?.[nextArtistId]
   if (!nextArtist) throw new HttpsError('failed-precondition', 'Next artist is missing.')
-  const currentWord = randomWord()
+  const currentWord = selectNextWord(room, privateRoom)
   const { turnStartedAt, turnEndsAt } = turnTiming(room)
   const roundId = createRoundId(nextCycle, nextTurnIndex)
 
@@ -338,6 +444,7 @@ export const startNextTurn = onCall(callableOptions, async (request) => {
     [`rooms/${roomCode}/accusationsUnlocked`]: nextCycle > 1,
     [`privateRooms/${roomCode}/turnOrder`]: turnOrder,
     [`privateRooms/${roomCode}/currentWord`]: currentWord,
+    [`privateRooms/${roomCode}/usedWords/${currentWord}`]: true,
     ...drawingMessageUpdate(roomCode, roundId, nextArtist),
   })
 
@@ -524,6 +631,9 @@ export const accuseCurrentArtist = onCall(callableOptions, async (request) => {
   if (!room.accusationsUnlocked || (room.currentCycle ?? 1) <= 1) {
     throw new HttpsError('failed-precondition', 'Accusations unlock after the first cycle.')
   }
+  if (room.caughtImposterRounds?.[room.roundId]) {
+    throw new HttpsError('failed-precondition', 'The artist has already been caught this turn.')
+  }
   if (room.currentArtistId === uid) throw new HttpsError('failed-precondition', 'Artist cannot accuse themself.')
 
   const now = Date.now()
@@ -588,6 +698,7 @@ export const accuseCurrentArtist = onCall(callableOptions, async (request) => {
       [`rooms/${roomCode}/players/${uid}/publicScore`]: nextAccuserActualScore,
       [`rooms/${roomCode}/players/${room.currentArtistId}/actualScore`]: nextArtistActualScore,
       [`rooms/${roomCode}/players/${room.currentArtistId}/publicScore`]: nextArtistActualScore,
+      [`rooms/${roomCode}/caughtImposterRounds/${roundId}`]: true,
       [`rooms/${roomCode}/chat/${roundId}/${messageId}`]: {
         uid,
         playerName: accuser.name,

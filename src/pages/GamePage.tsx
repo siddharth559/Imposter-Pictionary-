@@ -7,7 +7,6 @@ import { ChatBox } from '../components/ChatBox'
 import { GuessInput } from '../components/GuessInput'
 import { HostNewGameButton } from '../components/HostNewGameButton'
 import { PlayerSlotList } from '../components/PlayerSlotList'
-import { RulesModal } from '../components/RulesModal'
 import { Scoreboard } from '../components/Scoreboard'
 import { TimerBar } from '../components/TimerBar'
 import { VoteNextArtistButton } from '../components/VoteNextArtistButton'
@@ -31,7 +30,6 @@ const placeholderPlayers: PlayerSlot[] = [
 export function GamePage() {
   const { roomCode: roomCodeParam = 'ROOM' } = useParams()
   const roomCode = normalizeRoomCode(roomCodeParam)
-  const [rulesOpen, setRulesOpen] = useState(false)
   const { user } = useAuthUser()
   const { room } = useRoom(roomCode)
   const [error, setError] = useState<string | null>(null)
@@ -79,8 +77,10 @@ export function GamePage() {
       now <= room.turnEndsAt,
   )
   const alreadyAccused = Boolean(user && room?.roundId && room.accusations?.[room.roundId]?.[user.uid])
+  const accusationResolved = Boolean(room?.roundId && room.caughtImposterRounds?.[room.roundId])
   const accusationDisabledReason = getAccusationDisabledReason({
     accusationsUnlocked: Boolean(room?.accusationsUnlocked),
+    accusationResolved,
     actualScore,
     alreadyAccused,
     isCurrentArtist,
@@ -148,8 +148,12 @@ export function GamePage() {
     }
   }
 
+  function openRulesPage() {
+    window.open(`${import.meta.env.BASE_URL}rules.html`, '_blank', 'noopener,noreferrer')
+  }
+
   const rulesButton = (
-    <button type="button" onClick={() => setRulesOpen(true)}>
+    <button type="button" onClick={openRulesPage}>
       Rules
     </button>
   )
@@ -258,13 +262,13 @@ export function GamePage() {
       </nav>
 
       {error ? <p className="form-error">{error}</p> : null}
-      <RulesModal isOpen={rulesOpen} onClose={() => setRulesOpen(false)} />
     </main>
   )
 }
 
 type AccusationReasonInput = {
   accusationsUnlocked: boolean
+  accusationResolved: boolean
   actualScore: number
   alreadyAccused: boolean
   isCurrentArtist: boolean
@@ -275,6 +279,7 @@ type AccusationReasonInput = {
 
 function getAccusationDisabledReason({
   accusationsUnlocked,
+  accusationResolved,
   actualScore,
   alreadyAccused,
   isCurrentArtist,
@@ -284,6 +289,7 @@ function getAccusationDisabledReason({
 }: AccusationReasonInput) {
   if (!userReady) return 'Join the room to accuse.'
   if (!turnIsActive) return 'Accusations are only open during an active turn.'
+  if (accusationResolved) return 'The artist has already been caught this turn.'
   if (!accusationsUnlocked) return 'Accusations unlock after the first cycle.'
   if (isCurrentArtist) return 'The artist cannot accuse themself.'
   if (actualScore < threshold) return `Need ${threshold} actual points to accuse.`

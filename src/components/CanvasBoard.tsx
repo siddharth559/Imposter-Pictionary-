@@ -7,22 +7,21 @@ type CanvasBoardProps = {
   roundId: string
   currentArtistId?: string
   currentUserId?: string
-  color?: string
-  width?: number
 }
 
 const CANVAS_BG = '#fbfaf7'
 const DEFAULT_COLOR = '#101827'
 const DEFAULT_WIDTH = 5
 const FIREBASE_SYNC_MS = 55
+const COLORS = ['#101827', '#d93d4f', '#308de4', '#25a85a', '#ffd447', '#7c3aed']
+
+type CanvasTool = 'brush' | 'eraser' | 'fill'
 
 export function CanvasBoard({
   roomCode,
   roundId,
   currentArtistId,
   currentUserId,
-  color = DEFAULT_COLOR,
-  width = DEFAULT_WIDTH,
 }: CanvasBoardProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const strokesRef = useRef<CanvasStroke[]>([])
@@ -31,6 +30,9 @@ export function CanvasBoard({
   const lastSyncRef = useRef(0)
   const originalBodyOverflowRef = useRef<string | null>(null)
   const [isDrawing, setIsDrawing] = useState(false)
+  const [tool, setTool] = useState<CanvasTool>('brush')
+  const [color, setColor] = useState(DEFAULT_COLOR)
+  const [width, setWidth] = useState(DEFAULT_WIDTH)
 
   const canDraw = Boolean(currentUserId && currentUserId === currentArtistId)
 
@@ -100,11 +102,31 @@ export function CanvasBoard({
     const strokeId = createStrokeId(roomCode, roundId)
     if (!strokeId) return
 
+    if (tool === 'fill') {
+      const fillStroke: CanvasStroke = {
+        uid: currentUserId,
+        kind: 'fill',
+        points: [],
+        color,
+        width,
+        createdAt: Date.now(),
+      }
+
+      redrawCanvas(fillStroke)
+      await saveStroke(roomCode, roundId, strokeId, fillStroke)
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId)
+      }
+      unlockPageScroll()
+      return
+    }
+
     const stroke: CanvasStroke = {
       uid: currentUserId,
+      kind: 'stroke',
       points: [getCanvasPoint(event)],
-      color,
-      width,
+      color: tool === 'eraser' ? CANVAS_BG : color,
+      width: tool === 'eraser' ? Math.max(12, width * 2) : width,
       createdAt: Date.now(),
     }
 
@@ -185,6 +207,68 @@ export function CanvasBoard({
           </button>
         ) : null}
       </div>
+      {canDraw ? (
+        <div className="canvas-tools" aria-label="Drawing tools">
+          <div className="tool-button-group" role="group" aria-label="Tool">
+            <button
+              type="button"
+              className={tool === 'brush' ? 'tool-button tool-button--active' : 'tool-button'}
+              onClick={() => setTool('brush')}
+            >
+              Brush
+            </button>
+            <button
+              type="button"
+              className={tool === 'eraser' ? 'tool-button tool-button--active' : 'tool-button'}
+              onClick={() => setTool('eraser')}
+            >
+              Eraser
+            </button>
+            <button
+              type="button"
+              className={tool === 'fill' ? 'tool-button tool-button--active' : 'tool-button'}
+              onClick={() => setTool('fill')}
+            >
+              Fill
+            </button>
+          </div>
+          <div className="color-swatches" aria-label="Brush color">
+            {COLORS.map((swatch) => (
+              <button
+                key={swatch}
+                type="button"
+                className={color === swatch ? 'color-swatch color-swatch--active' : 'color-swatch'}
+                style={{ backgroundColor: swatch }}
+                aria-label={`Use color ${swatch}`}
+                onClick={() => {
+                  setColor(swatch)
+                  if (tool === 'eraser') setTool('brush')
+                }}
+              />
+            ))}
+            <input
+              className="color-picker"
+              type="color"
+              value={color}
+              aria-label="Custom color"
+              onChange={(event) => {
+                setColor(event.target.value)
+                if (tool === 'eraser') setTool('brush')
+              }}
+            />
+          </div>
+          <label className="width-control">
+            Width
+            <input
+              type="range"
+              min="2"
+              max="18"
+              value={width}
+              onChange={(event) => setWidth(Number(event.target.value))}
+            />
+          </label>
+        </div>
+      ) : null}
       <canvas
         ref={canvasRef}
         className={canDraw ? 'drawing-canvas drawing-canvas--active' : 'drawing-canvas'}
@@ -204,6 +288,12 @@ function drawStroke(
   canvasWidth: number,
   canvasHeight: number,
 ) {
+  if (stroke.kind === 'fill') {
+    context.fillStyle = stroke.color
+    context.fillRect(0, 0, canvasWidth, canvasHeight)
+    return
+  }
+
   const points = stroke.points
   if (points.length === 0) return
 

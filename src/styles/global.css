@@ -33,6 +33,7 @@ body {
 
 button,
 input,
+textarea,
 .button-link {
   min-height: 44px;
   border: 1px solid var(--line);
@@ -63,6 +64,33 @@ input {
   padding: 0 12px;
   color: var(--ink);
   background: #ffffff;
+}
+
+textarea {
+  width: 100%;
+  padding: 12px;
+  color: var(--ink);
+  background: #ffffff;
+  resize: vertical;
+}
+
+.field-hint {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
+  text-transform: none;
+}
+
+.toggle-label {
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  justify-content: start;
+  text-transform: none;
+}
+
+.toggle-label input {
+  width: 18px;
+  min-height: 18px;
 }
 
 label {
@@ -437,6 +465,55 @@ p {
   font-weight: 750;
 }
 
+.canvas-tools {
+  display: grid;
+  gap: 10px;
+}
+
+.tool-button-group,
+.color-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tool-button {
+  min-height: 38px;
+  padding: 0 12px;
+}
+
+.tool-button--active {
+  color: #07111f;
+  border-color: #d6a914;
+  background: var(--yellow);
+}
+
+.color-swatch,
+.color-picker {
+  width: 38px;
+  height: 38px;
+  min-height: 38px;
+  padding: 0;
+  overflow: hidden;
+  border-radius: 50%;
+}
+
+.color-swatch {
+  border: 2px solid rgba(16, 24, 39, 0.22);
+}
+
+.color-swatch--active {
+  box-shadow: 0 0 0 3px #ffffff, 0 0 0 6px rgba(48, 141, 228, 0.42);
+}
+
+.width-control {
+  gap: 6px;
+}
+
+.width-control input {
+  padding: 0;
+}
+
 .drawing-canvas {
   width: 100%;
   aspect-ratio: 1 / 1.08;
@@ -636,6 +713,14 @@ p {
   color: var(--ink);
   font-size: 34px;
   letter-spacing: 0.08em;
+}
+
+.room-setting-note {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 850;
+  text-transform: uppercase;
 }
 
 .modal-backdrop {

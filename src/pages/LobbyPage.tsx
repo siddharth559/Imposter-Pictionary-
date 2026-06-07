@@ -105,6 +105,15 @@ export function LobbyPage() {
           <p className="section-label">Rounds</p>
           <strong>{room.settings.cycles}</strong>
         </div>
+        <div>
+          <p className="section-label">Players</p>
+          <strong>{Object.keys(room.players ?? {}).length}/{room.settings.maxPlayers}</strong>
+        </div>
+        <div>
+          <p className="section-label">Words</p>
+          <strong>{room.settings.wordCorpus?.length ? `${room.settings.wordCorpus.length} custom` : 'Default'}</strong>
+          {room.settings.useOnlyCorpus ? <small className="room-setting-note">only</small> : null}
+        </div>
         <button type="button" onClick={handleShareRoom}>
           {shareStatus || 'Share / Copy'}
         </button>

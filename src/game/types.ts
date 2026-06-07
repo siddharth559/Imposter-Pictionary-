@@ -30,6 +30,8 @@ export type Room = {
     cycles: number
     turnSeconds: number
     maxPlayers: number
+    wordCorpus?: string[]
+    useOnlyCorpus?: boolean
   }
   players?: Record<string, RoomPlayer>
   currentArtistId?: string
@@ -41,6 +43,7 @@ export type Room = {
   wordLength?: number
   accusationsUnlocked?: boolean
   accusations?: Record<string, Record<string, true>>
+  caughtImposterRounds?: Record<string, true>
   nextTurnVotes?: Record<string, Record<string, true>>
 }
 
@@ -51,6 +54,7 @@ export type StrokePoint = {
 
 export type CanvasStroke = {
   uid: string
+  kind?: 'stroke' | 'fill'
   points: StrokePoint[]
   color: string
   width: number

@@ -26,7 +26,7 @@ export function listenToRoundStrokes(
   return onValue(ref(getFirebaseDatabase(), strokesPath(roomCode, roundId)), (snapshot) => {
     const value = snapshot.val() as Record<string, CanvasStroke> | null
     const strokes = Object.values(value ?? {})
-      .filter((stroke) => Array.isArray(stroke.points) && stroke.points.length > 0)
+      .filter((stroke) => stroke.kind === 'fill' || (Array.isArray(stroke.points) && stroke.points.length > 0))
       .sort((a, b) => a.createdAt - b.createdAt)
 
     callback(strokes)
