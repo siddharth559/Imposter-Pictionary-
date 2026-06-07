@@ -4,6 +4,7 @@ import { HomePage } from './pages/HomePage'
 import { LobbyPage } from './pages/LobbyPage'
 import { ResultsPage } from './pages/ResultsPage'
 import { firebaseSetupError } from './firebase/client'
+import { FeedbackButton } from './components/FeedbackButton'
 
 function App() {
   if (firebaseSetupError) {
@@ -27,6 +28,7 @@ function App() {
         <Route path="/results/:roomCode" element={<ResultsPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <FeedbackButton />
     </BrowserRouter>
   )
 }

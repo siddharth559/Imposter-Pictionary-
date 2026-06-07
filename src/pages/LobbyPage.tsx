@@ -121,6 +121,10 @@ export function LobbyPage() {
 
       <PlayerSlotList players={players} />
 
+      <p className="creator-credit">
+        Developed by Siddharth Acharya, with assistance from Codex and ChatGPT.
+      </p>
+
       <nav className="bottom-actions">
         {isHost ? (
           <button className="primary-button" type="button" onClick={handleStartRoom}>

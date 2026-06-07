@@ -86,6 +86,7 @@ const callableOptions = {
   cors: true,
   invoker: 'public',
 }
+const FEEDBACK_TO_EMAIL = ['siddharth.acharya02', 'gmail.com'].join(String.fromCharCode(64))
 
 type RoomPlayer = {
   name: string
@@ -223,6 +224,16 @@ function cleanGuess(guessText: unknown) {
   const value = typeof guessText === 'string' ? guessText.trim().slice(0, 42) : ''
   if (!value) throw new HttpsError('invalid-argument', 'Guess cannot be empty.')
   return value
+}
+
+function cleanFeedbackText(feedbackText: unknown) {
+  const value = typeof feedbackText === 'string' ? feedbackText.trim().slice(0, 1200) : ''
+  if (value.length < 5) throw new HttpsError('invalid-argument', 'Feedback should be at least 5 characters.')
+  return value
+}
+
+function cleanOptionalString(value: unknown, maxLength: number) {
+  return typeof value === 'string' ? value.trim().slice(0, maxLength) : ''
 }
 
 function normalizeGuess(value: string) {
@@ -412,6 +423,69 @@ export const startGame = onCall(callableOptions, async (request) => {
   })
 
   return { roundId, currentArtistId }
+})
+
+export const submitFeedback = onCall(callableOptions, async (request) => {
+  const uid = requireUid(request.auth)
+  const feedbackText = cleanFeedbackText(request.data?.feedbackText)
+  const page = cleanOptionalString(request.data?.page, 160)
+  const roomCode = cleanOptionalString(request.data?.roomCode, 5).toUpperCase()
+  const userAgent = cleanOptionalString(request.data?.userAgent, 240)
+  const now = Date.now()
+  const feedbackRef = db.ref('feedbackInbox').push()
+  const feedbackId = feedbackRef.key
+  if (!feedbackId) throw new HttpsError('internal', 'Could not save feedback.')
+
+  const message = [
+    'New Imposter Pictionary feedback',
+    '',
+    `Feedback: ${feedbackText}`,
+    `Page: ${page || 'Unknown'}`,
+    `Room: ${roomCode || 'None'}`,
+    `UID: ${uid}`,
+    `User agent: ${userAgent || 'Unknown'}`,
+    `Created at: ${new Date(now).toISOString()}`,
+  ].join('\n')
+
+  await feedbackRef.set({
+    uid,
+    feedbackText,
+    page,
+    roomCode,
+    userAgent,
+    createdAt: now,
+    deliveryStatus: 'pending',
+  })
+
+  try {
+    const response = await fetch(`https://formsubmit.co/ajax/${encodeURIComponent(FEEDBACK_TO_EMAIL)}`, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        _captcha: 'false',
+        _subject: 'Imposter Pictionary feedback',
+        message,
+      }),
+    })
+
+    await feedbackRef.update({
+      deliveryStatus: response.ok ? 'sent' : 'failed',
+      deliveryCheckedAt: Date.now(),
+      deliveryCode: response.status,
+    })
+
+    return { ok: true, sent: response.ok }
+  } catch (error) {
+    await feedbackRef.update({
+      deliveryStatus: 'failed',
+      deliveryCheckedAt: Date.now(),
+      deliveryError: error instanceof Error ? error.message : 'Unknown delivery error',
+    })
+    return { ok: true, sent: false }
+  }
 })
 
 export const startNextTurn = onCall(callableOptions, async (request) => {
