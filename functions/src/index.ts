@@ -577,16 +577,17 @@ export const accuseCurrentArtist = onCall(callableOptions, async (request) => {
     }
 
     const stolen = Math.floor((artist.actualScore ?? 0) * 0.5)
-    const publicStolen = Math.floor((artist.publicScore ?? 0) * 0.5)
+    const nextAccuserActualScore = (accuser.actualScore ?? 0) + stolen
+    const nextArtistActualScore = (artist.actualScore ?? 0) - stolen
     const nextImposterCandidates = playerIds.filter((playerId) => playerId !== room.currentArtistId)
     const nextImposterId =
       nextImposterCandidates[Math.floor(Math.random() * nextImposterCandidates.length)] ?? room.currentArtistId
 
     await db.ref().update({
-      [`rooms/${roomCode}/players/${uid}/actualScore`]: (accuser.actualScore ?? 0) + stolen,
-      [`rooms/${roomCode}/players/${uid}/publicScore`]: (accuser.publicScore ?? 0) + publicStolen,
-      [`rooms/${roomCode}/players/${room.currentArtistId}/actualScore`]: (artist.actualScore ?? 0) - stolen,
-      [`rooms/${roomCode}/players/${room.currentArtistId}/publicScore`]: (artist.publicScore ?? 0) - publicStolen,
+      [`rooms/${roomCode}/players/${uid}/actualScore`]: nextAccuserActualScore,
+      [`rooms/${roomCode}/players/${uid}/publicScore`]: nextAccuserActualScore,
+      [`rooms/${roomCode}/players/${room.currentArtistId}/actualScore`]: nextArtistActualScore,
+      [`rooms/${roomCode}/players/${room.currentArtistId}/publicScore`]: nextArtistActualScore,
       [`rooms/${roomCode}/chat/${roundId}/${messageId}`]: {
         uid,
         playerName: accuser.name,

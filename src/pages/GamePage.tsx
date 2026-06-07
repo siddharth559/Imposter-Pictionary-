@@ -5,6 +5,7 @@ import { ActualPointsCard } from '../components/ActualPointsCard'
 import { CanvasBoard } from '../components/CanvasBoard'
 import { ChatBox } from '../components/ChatBox'
 import { GuessInput } from '../components/GuessInput'
+import { HostNewGameButton } from '../components/HostNewGameButton'
 import { PlayerSlotList } from '../components/PlayerSlotList'
 import { RulesModal } from '../components/RulesModal'
 import { Scoreboard } from '../components/Scoreboard'
@@ -172,6 +173,14 @@ export function GamePage() {
       </aside>
 
       <section className="game-center-column" aria-label="Drawing and chat area">
+        {room?.status === 'finished' ? (
+          <section className="game-ended-panel" aria-label="Game ended">
+            <p className="eyebrow">Game Ended</p>
+            <h1>Final Scores</h1>
+            <Scoreboard players={players} />
+            <HostNewGameButton onError={setError} />
+          </section>
+        ) : null}
         {isImposter ? (
           <section className="imposter-alert" aria-label="Your secret role">
             <span>!</span>

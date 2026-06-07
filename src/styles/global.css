@@ -137,6 +137,23 @@ p {
   font-size: 18px;
 }
 
+.game-ended-panel {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid rgba(48, 141, 228, 0.28);
+  border-radius: 8px;
+  background: #eef7ff;
+  box-shadow: var(--shadow);
+}
+
+.game-ended-panel h1 {
+  margin: 0;
+  font-size: 42px;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
 @keyframes points-toast-fade {
   0% {
     opacity: 0;
