@@ -60,6 +60,16 @@ export async function getPlayerSecret(roomCodeInput: string) {
   return data
 }
 
+export async function getWordHint(roomCodeInput: string) {
+  const roomCode = normalizeRoomCode(roomCodeInput)
+  const getWordHintCallable = httpsCallable<{ roomCode: string }, { letters: string[] }>(
+    getFirebaseFunctions(),
+    'getWordHint',
+  )
+  const { data } = await getWordHintCallable({ roomCode })
+  return data.letters
+}
+
 export async function submitGuess(roomCodeInput: string, guessText: string) {
   const roomCode = normalizeRoomCode(roomCodeInput)
   const submitGuessCallable = httpsCallable<
@@ -77,5 +87,15 @@ export async function accuseCurrentArtist(roomCodeInput: string) {
     { correct: boolean; stolen?: number; penalty?: number; alreadyResolved?: boolean }
   >(getFirebaseFunctions(), 'accuseCurrentArtist')
   const { data } = await accuseCurrentArtistCallable({ roomCode })
+  return data
+}
+
+export async function voteNextArtist(roomCodeInput: string) {
+  const roomCode = normalizeRoomCode(roomCodeInput)
+  const voteNextArtistCallable = httpsCallable<
+    { roomCode: string },
+    { alreadyVoted?: boolean; advanced: boolean; voteCount?: number; requiredVotes?: number }
+  >(getFirebaseFunctions(), 'voteNextArtist')
+  const { data } = await voteNextArtistCallable({ roomCode })
   return data
 }

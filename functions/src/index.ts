@@ -56,6 +56,7 @@ type Room = {
   turnEndsAt?: number
   roundId?: string
   accusationsUnlocked?: boolean
+  nextTurnVotes?: Record<string, Record<string, true>>
 }
 
 type PrivateRoom = {
@@ -126,6 +127,10 @@ function randomWord() {
   return WORDS[Math.floor(Math.random() * WORDS.length)]
 }
 
+function wordLength(word?: string | null) {
+  return (word ?? '').length
+}
+
 function cleanGuess(guessText: unknown) {
   const value = typeof guessText === 'string' ? guessText.trim().slice(0, 42) : ''
   if (!value) throw new HttpsError('invalid-argument', 'Guess cannot be empty.')
@@ -157,6 +162,89 @@ function turnTiming(room: Room) {
   const turnStartedAt = Date.now()
   const turnEndsAt = turnStartedAt + turnSeconds * 1000
   return { turnStartedAt, turnEndsAt }
+}
+
+async function finishTurn(roomCode: string, room: Room, privateRoom: PrivateRoom, allowEarlyEnd = false) {
+  if (room.status !== 'playing') throw new HttpsError('failed-precondition', 'Game is not currently playing.')
+  if (!room.roundId || !room.turnStartedAt || !room.turnEndsAt) {
+    throw new HttpsError('failed-precondition', 'No active turn.')
+  }
+
+  const now = Date.now()
+  if (!allowEarlyEnd && now < room.turnEndsAt) {
+    throw new HttpsError('failed-precondition', 'Turn timer is still running.')
+  }
+
+  const roundId = room.roundId
+  const endedRoundRef = db.ref(`privateRooms/${roomCode}/endedRounds/${roundId}`)
+  const endedRoundTransaction = await endedRoundRef.transaction((currentValue) => {
+    if (currentValue) return
+    return true
+  })
+
+  if (!endedRoundTransaction.committed) {
+    return { alreadyEnded: true }
+  }
+
+  const turnOrder = privateRoom.turnOrder?.length ? privateRoom.turnOrder : sortedPlayerIds(room)
+  if (turnOrder.length < MIN_PLAYERS) throw new HttpsError('failed-precondition', 'Need at least 4 players.')
+  if (turnOrder.length > MAX_PLAYERS) throw new HttpsError('failed-precondition', 'Maximum 8 players.')
+
+  const artistId = room.currentArtistId ?? turnOrder[room.currentTurnIndex ?? 0]
+  const artist = room.players?.[artistId]
+  if (!artist) throw new HttpsError('failed-precondition', 'Current artist is missing.')
+
+  const guesserIds = turnOrder.filter((playerId) => playerId !== artistId)
+  const correctGuesserSet = privateRoom.correctGuessers?.[roundId] ?? {}
+  const correctGuessers = guesserIds.filter((playerId) => correctGuesserSet[playerId]).length
+  const failedGuessers = Math.max(0, guesserIds.length - correctGuessers)
+  const isImposterArtist = privateRoom.imposterId === artistId
+  const artistActualGain = isImposterArtist ? failedGuessers * 20 : correctGuessers * 10
+  const artistPublicGain = correctGuessers * 10
+  const selectedCycles = room.settings?.cycles ?? 3
+  const { nextTurnIndex, nextCycle, nextArtistId } = nextTurnState(room, turnOrder)
+  const gameFinished = nextCycle > selectedCycles
+
+  const updates: Record<string, unknown> = {
+    [`rooms/${roomCode}/players/${artistId}/actualScore`]: (artist.actualScore ?? 0) + artistActualGain,
+    [`rooms/${roomCode}/players/${artistId}/publicScore`]: (artist.publicScore ?? 0) + artistPublicGain,
+    [`privateRooms/${roomCode}/turnOrder`]: turnOrder,
+  }
+
+  if (gameFinished) {
+    updates[`rooms/${roomCode}/status`] = 'finished'
+    updates[`rooms/${roomCode}/turnEndsAt`] = now
+    updates[`rooms/${roomCode}/wordLength`] = null
+    updates[`rooms/${roomCode}/accusationsUnlocked`] = false
+    updates[`privateRooms/${roomCode}/currentWord`] = null
+  } else {
+    const { turnStartedAt, turnEndsAt } = turnTiming(room)
+    const nextRoundId = createRoundId(nextCycle, nextTurnIndex)
+    const nextArtist = room.players?.[nextArtistId]
+    if (!nextArtist) throw new HttpsError('failed-precondition', 'Next artist is missing.')
+    const nextWord = randomWord()
+    updates[`rooms/${roomCode}/currentArtistId`] = nextArtistId
+    updates[`rooms/${roomCode}/currentTurnIndex`] = nextTurnIndex
+    updates[`rooms/${roomCode}/currentCycle`] = nextCycle
+    updates[`rooms/${roomCode}/turnStartedAt`] = turnStartedAt
+    updates[`rooms/${roomCode}/turnEndsAt`] = turnEndsAt
+    updates[`rooms/${roomCode}/roundId`] = nextRoundId
+    updates[`rooms/${roomCode}/wordLength`] = wordLength(nextWord)
+    updates[`rooms/${roomCode}/accusationsUnlocked`] = nextCycle > 1
+    updates[`privateRooms/${roomCode}/currentWord`] = nextWord
+    Object.assign(updates, drawingMessageUpdate(roomCode, nextRoundId, nextArtist))
+  }
+
+  await db.ref().update(updates)
+
+  return {
+    status: gameFinished ? 'finished' : 'playing',
+    correctGuessers,
+    failedGuessers,
+    artistActualGain,
+    artistPublicGain,
+    nextArtistId: gameFinished ? null : nextArtistId,
+  }
 }
 
 function nextTurnState(room: Room, turnOrder: string[]) {
@@ -194,6 +282,7 @@ export const startGame = onCall(callableOptions, async (request) => {
   const currentArtistId = turnOrder[currentTurnIndex]
   const currentArtist = room.players?.[currentArtistId]
   if (!currentArtist) throw new HttpsError('failed-precondition', 'Current artist is missing.')
+  const currentWord = randomWord()
   const { turnStartedAt, turnEndsAt } = turnTiming(room)
   const roundId = createRoundId(currentCycle, currentTurnIndex)
 
@@ -205,11 +294,12 @@ export const startGame = onCall(callableOptions, async (request) => {
     [`rooms/${roomCode}/turnStartedAt`]: turnStartedAt,
     [`rooms/${roomCode}/turnEndsAt`]: turnEndsAt,
     [`rooms/${roomCode}/roundId`]: roundId,
+    [`rooms/${roomCode}/wordLength`]: wordLength(currentWord),
     [`rooms/${roomCode}/accusationsUnlocked`]: false,
     [`privateRooms/${roomCode}`]: {
       imposterId,
       turnOrder,
-      currentWord: randomWord(),
+      currentWord,
       createdAt: Date.now(),
     },
     ...drawingMessageUpdate(roomCode, roundId, currentArtist),
@@ -233,6 +323,7 @@ export const startNextTurn = onCall(callableOptions, async (request) => {
   const { nextTurnIndex, nextCycle, nextArtistId } = nextTurnState(room, turnOrder)
   const nextArtist = room.players?.[nextArtistId]
   if (!nextArtist) throw new HttpsError('failed-precondition', 'Next artist is missing.')
+  const currentWord = randomWord()
   const { turnStartedAt, turnEndsAt } = turnTiming(room)
   const roundId = createRoundId(nextCycle, nextTurnIndex)
 
@@ -243,9 +334,10 @@ export const startNextTurn = onCall(callableOptions, async (request) => {
     [`rooms/${roomCode}/turnStartedAt`]: turnStartedAt,
     [`rooms/${roomCode}/turnEndsAt`]: turnEndsAt,
     [`rooms/${roomCode}/roundId`]: roundId,
+    [`rooms/${roomCode}/wordLength`]: wordLength(currentWord),
     [`rooms/${roomCode}/accusationsUnlocked`]: nextCycle > 1,
     [`privateRooms/${roomCode}/turnOrder`]: turnOrder,
-    [`privateRooms/${roomCode}/currentWord`]: randomWord(),
+    [`privateRooms/${roomCode}/currentWord`]: currentWord,
     ...drawingMessageUpdate(roomCode, roundId, nextArtist),
   })
 
@@ -257,82 +349,8 @@ export const endCurrentTurn = onCall(callableOptions, async (request) => {
   const roomCode = normalizeRoomCode(request.data?.roomCode)
   const [room, privateRoom] = await Promise.all([getRoom(roomCode), getPrivateRoom(roomCode)])
 
-  if (room.status !== 'playing') throw new HttpsError('failed-precondition', 'Game is not currently playing.')
-  if (!room.roundId || !room.turnStartedAt || !room.turnEndsAt) {
-    throw new HttpsError('failed-precondition', 'No active turn.')
-  }
   if (!room.players?.[uid]) throw new HttpsError('permission-denied', 'Join the room before ending a turn.')
-
-  const now = Date.now()
-  if (now < room.turnEndsAt) throw new HttpsError('failed-precondition', 'Turn timer is still running.')
-
-  const roundId = room.roundId
-  const endedRoundRef = db.ref(`privateRooms/${roomCode}/endedRounds/${roundId}`)
-  const endedRoundTransaction = await endedRoundRef.transaction((currentValue) => {
-    if (currentValue) return
-    return true
-  })
-
-  if (!endedRoundTransaction.committed) {
-    return { alreadyEnded: true }
-  }
-
-  const turnOrder = privateRoom.turnOrder?.length ? privateRoom.turnOrder : sortedPlayerIds(room)
-  if (turnOrder.length < MIN_PLAYERS) throw new HttpsError('failed-precondition', 'Need at least 4 players.')
-  if (turnOrder.length > MAX_PLAYERS) throw new HttpsError('failed-precondition', 'Maximum 8 players.')
-
-  const artistId = room.currentArtistId ?? turnOrder[room.currentTurnIndex ?? 0]
-  const artist = room.players[artistId]
-  if (!artist) throw new HttpsError('failed-precondition', 'Current artist is missing.')
-
-  const guesserIds = turnOrder.filter((playerId) => playerId !== artistId)
-  const correctGuesserSet = privateRoom.correctGuessers?.[roundId] ?? {}
-  const correctGuessers = guesserIds.filter((playerId) => correctGuesserSet[playerId]).length
-  const failedGuessers = Math.max(0, guesserIds.length - correctGuessers)
-  const isImposterArtist = privateRoom.imposterId === artistId
-  const artistActualGain = isImposterArtist ? failedGuessers * 20 : correctGuessers * 10
-  const artistPublicGain = isImposterArtist ? 0 : correctGuessers * 10
-  const selectedCycles = room.settings?.cycles ?? 3
-  const { nextTurnIndex, nextCycle, nextArtistId } = nextTurnState(room, turnOrder)
-  const gameFinished = nextCycle > selectedCycles
-
-  const updates: Record<string, unknown> = {
-    [`rooms/${roomCode}/players/${artistId}/actualScore`]: (artist.actualScore ?? 0) + artistActualGain,
-    [`rooms/${roomCode}/players/${artistId}/publicScore`]: (artist.publicScore ?? 0) + artistPublicGain,
-    [`privateRooms/${roomCode}/turnOrder`]: turnOrder,
-  }
-
-  if (gameFinished) {
-    updates[`rooms/${roomCode}/status`] = 'finished'
-    updates[`rooms/${roomCode}/turnEndsAt`] = now
-    updates[`rooms/${roomCode}/accusationsUnlocked`] = false
-    updates[`privateRooms/${roomCode}/currentWord`] = null
-  } else {
-    const { turnStartedAt, turnEndsAt } = turnTiming(room)
-    const nextRoundId = createRoundId(nextCycle, nextTurnIndex)
-    const nextArtist = room.players?.[nextArtistId]
-    if (!nextArtist) throw new HttpsError('failed-precondition', 'Next artist is missing.')
-    updates[`rooms/${roomCode}/currentArtistId`] = nextArtistId
-    updates[`rooms/${roomCode}/currentTurnIndex`] = nextTurnIndex
-    updates[`rooms/${roomCode}/currentCycle`] = nextCycle
-    updates[`rooms/${roomCode}/turnStartedAt`] = turnStartedAt
-    updates[`rooms/${roomCode}/turnEndsAt`] = turnEndsAt
-    updates[`rooms/${roomCode}/roundId`] = nextRoundId
-    updates[`rooms/${roomCode}/accusationsUnlocked`] = nextCycle > 1
-    updates[`privateRooms/${roomCode}/currentWord`] = randomWord()
-    Object.assign(updates, drawingMessageUpdate(roomCode, nextRoundId, nextArtist))
-  }
-
-  await db.ref().update(updates)
-
-  return {
-    status: gameFinished ? 'finished' : 'playing',
-    correctGuessers,
-    failedGuessers,
-    artistActualGain,
-    artistPublicGain,
-    nextArtistId: gameFinished ? null : nextArtistId,
-  }
+  return finishTurn(roomCode, room, privateRoom)
 })
 
 export const getCurrentWord = onCall(callableOptions, async (request) => {
@@ -359,6 +377,73 @@ export const getPlayerSecret = onCall(callableOptions, async (request) => {
   return {
     isImposter: privateRoom.imposterId === uid,
   }
+})
+
+export const getWordHint = onCall(callableOptions, async (request) => {
+  requireUid(request.auth)
+  const roomCode = normalizeRoomCode(request.data?.roomCode)
+  const [room, privateRoom] = await Promise.all([getRoom(roomCode), getPrivateRoom(roomCode)])
+
+  if (room.status !== 'playing' || !room.turnStartedAt) return { letters: [] }
+
+  const word = privateRoom.currentWord ?? ''
+  const elapsedSeconds = (Date.now() - room.turnStartedAt) / 1000
+  const letters = Array.from({ length: word.length }, () => '')
+  if (word.length && elapsedSeconds >= 20) letters[0] = word[0].toUpperCase()
+  if (word.length > 1 && elapsedSeconds >= 40) letters[word.length - 1] = word[word.length - 1].toUpperCase()
+
+  return { letters }
+})
+
+export const voteNextArtist = onCall(callableOptions, async (request) => {
+  const uid = requireUid(request.auth)
+  const roomCode = normalizeRoomCode(request.data?.roomCode)
+  const [room, privateRoom] = await Promise.all([getRoom(roomCode), getPrivateRoom(roomCode)])
+
+  if (room.status !== 'playing') throw new HttpsError('failed-precondition', 'Game is not currently playing.')
+  if (!room.roundId || !room.turnStartedAt || !room.turnEndsAt || !room.currentArtistId) {
+    throw new HttpsError('failed-precondition', 'No active turn.')
+  }
+  if (!room.players?.[uid]) throw new HttpsError('permission-denied', 'Join the room before voting.')
+  if (room.currentArtistId === uid) throw new HttpsError('failed-precondition', 'The artist cannot vote to skip themself.')
+
+  const now = Date.now()
+  if (now < room.turnStartedAt || now > room.turnEndsAt) {
+    throw new HttpsError('deadline-exceeded', 'Voting is closed for this turn.')
+  }
+
+  const roundId = room.roundId
+  const voteRef = db.ref(`rooms/${roomCode}/nextTurnVotes/${roundId}/${uid}`)
+  const voteTransaction = await voteRef.transaction((currentValue) => {
+    if (currentValue) return
+    return true
+  })
+
+  if (!voteTransaction.committed) return { alreadyVoted: true, advanced: false }
+
+  const player = room.players[uid]
+  const messageId = createChatMessageId(roomCode, roundId)
+  const updates: Record<string, unknown> = {
+    [`rooms/${roomCode}/chat/${roundId}/${messageId}`]: {
+      uid,
+      playerName: player.name,
+      kind: 'system',
+      text: `${player.name} voted for next artist`,
+      createdAt: now,
+    },
+  }
+
+  const turnOrder = privateRoom.turnOrder?.length ? privateRoom.turnOrder : sortedPlayerIds(room)
+  const eligibleVoters = turnOrder.filter((playerId) => playerId !== room.currentArtistId && room.players?.[playerId])
+  const previousVotes = room.nextTurnVotes?.[roundId] ?? {}
+  const voteCount = new Set([...Object.keys(previousVotes), uid]).size
+  const shouldAdvance = eligibleVoters.length > 0 && voteCount >= eligibleVoters.length
+
+  await db.ref().update(updates)
+  if (!shouldAdvance) return { alreadyVoted: false, advanced: false, voteCount, requiredVotes: eligibleVoters.length }
+
+  const result = await finishTurn(roomCode, room, privateRoom, true)
+  return { alreadyVoted: false, advanced: true, voteCount, requiredVotes: eligibleVoters.length, ...result }
 })
 
 export const submitGuess = onCall(callableOptions, async (request) => {
@@ -492,13 +577,16 @@ export const accuseCurrentArtist = onCall(callableOptions, async (request) => {
     }
 
     const stolen = Math.floor((artist.actualScore ?? 0) * 0.5)
+    const publicStolen = Math.floor((artist.publicScore ?? 0) * 0.5)
     const nextImposterCandidates = playerIds.filter((playerId) => playerId !== room.currentArtistId)
     const nextImposterId =
       nextImposterCandidates[Math.floor(Math.random() * nextImposterCandidates.length)] ?? room.currentArtistId
 
     await db.ref().update({
       [`rooms/${roomCode}/players/${uid}/actualScore`]: (accuser.actualScore ?? 0) + stolen,
+      [`rooms/${roomCode}/players/${uid}/publicScore`]: (accuser.publicScore ?? 0) + publicStolen,
       [`rooms/${roomCode}/players/${room.currentArtistId}/actualScore`]: (artist.actualScore ?? 0) - stolen,
+      [`rooms/${roomCode}/players/${room.currentArtistId}/publicScore`]: (artist.publicScore ?? 0) - publicStolen,
       [`rooms/${roomCode}/chat/${roundId}/${messageId}`]: {
         uid,
         playerName: accuser.name,
@@ -513,9 +601,11 @@ export const accuseCurrentArtist = onCall(callableOptions, async (request) => {
   }
 
   const penalty = Math.floor((accuser.actualScore ?? 0) * 0.5)
+  const publicPenalty = Math.floor((accuser.publicScore ?? 0) * 0.5)
 
   await db.ref().update({
     [`rooms/${roomCode}/players/${uid}/actualScore`]: (accuser.actualScore ?? 0) - penalty,
+    [`rooms/${roomCode}/players/${uid}/publicScore`]: (accuser.publicScore ?? 0) - publicPenalty,
     [`rooms/${roomCode}/chat/${roundId}/${messageId}`]: {
       uid,
       playerName: accuser.name,

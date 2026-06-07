@@ -169,7 +169,8 @@ p {
 .actual-points-card,
 .timer-bar,
 .rules-modal,
-.word-panel {
+.word-panel,
+.word-hint {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel);
@@ -178,7 +179,8 @@ p {
 
 .panel,
 .rules-modal,
-.word-panel {
+.word-panel,
+.word-hint {
   padding: 14px;
 }
 
@@ -237,6 +239,39 @@ p {
   text-align: right;
 }
 
+.word-hint {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.word-hint-boxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.word-hint-box {
+  display: grid;
+  width: 34px;
+  height: 38px;
+  place-items: center;
+  border: 2px solid rgba(16, 24, 39, 0.2);
+  border-radius: 8px;
+  background: #ffffff;
+  font-size: 18px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.word-hint small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-align: right;
+}
+
 .home-actions {
   gap: 18px;
 }
@@ -255,6 +290,11 @@ p {
 }
 
 .accuse-control {
+  display: grid;
+  gap: 6px;
+}
+
+.vote-next-control {
   display: grid;
   gap: 6px;
 }
@@ -419,6 +459,11 @@ p {
   font-weight: 800;
 }
 
+.mobile-accuse-row {
+  display: grid;
+  gap: 8px;
+}
+
 .mobile-accuse-row .danger-button {
   min-height: 48px;
 }
@@ -484,6 +529,14 @@ p {
 }
 
 .player-slot > span:first-child {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  overflow-wrap: anywhere;
+}
+
+.score-row > span:first-child {
   display: inline-flex;
   min-width: 0;
   align-items: center;

@@ -38,8 +38,10 @@ export type Room = {
   turnStartedAt?: number
   turnEndsAt?: number
   roundId?: string
+  wordLength?: number
   accusationsUnlocked?: boolean
   accusations?: Record<string, Record<string, true>>
+  nextTurnVotes?: Record<string, Record<string, true>>
 }
 
 export type StrokePoint = {

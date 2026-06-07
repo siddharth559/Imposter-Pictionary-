@@ -9,6 +9,8 @@ import { PlayerSlotList } from '../components/PlayerSlotList'
 import { RulesModal } from '../components/RulesModal'
 import { Scoreboard } from '../components/Scoreboard'
 import { TimerBar } from '../components/TimerBar'
+import { VoteNextArtistButton } from '../components/VoteNextArtistButton'
+import { WordHint } from '../components/WordHint'
 import { endCurrentTurn } from '../firebase/gameFunctions'
 import { useAuthUser } from '../firebase/useAuthUser'
 import { normalizeRoomCode } from '../firebase/rooms'
@@ -44,6 +46,10 @@ export function GamePage() {
   const isCurrentArtist = Boolean(user && currentArtistId === user.uid)
   const currentArtistName = currentArtistId ? room?.players?.[currentArtistId]?.name : undefined
   const canGuess = Boolean(room?.status === 'playing' && user && !isCurrentArtist)
+  const playerIds = Object.keys(room?.players ?? {})
+  const requiredVotes = Math.max(0, playerIds.filter((playerId) => playerId !== currentArtistId).length)
+  const voteCount = room?.roundId ? Object.keys(room.nextTurnVotes?.[room.roundId] ?? {}).length : 0
+  const userVotedNext = Boolean(user && room?.roundId && room.nextTurnVotes?.[room.roundId]?.[user.uid])
   const totalSeconds = room?.settings.turnSeconds ?? 60
   const secondsLeft =
     room?.turnEndsAt && room.status === 'playing' ? Math.max(0, Math.ceil((room.turnEndsAt - now) / 1000)) : totalSeconds
@@ -58,7 +64,7 @@ export function GamePage() {
     }))
     : placeholderPlayers
   const accusationThreshold = getAccusationThreshold(
-    Object.keys(room?.players ?? {}).length || placeholderPlayers.length,
+    playerIds.length || placeholderPlayers.length,
     room?.settings.cycles ?? 3,
   )
   const turnIsActive = Boolean(
@@ -77,6 +83,12 @@ export function GamePage() {
     threshold: accusationThreshold,
     turnIsActive,
     userReady: Boolean(user && room),
+  })
+  const voteDisabledReason = getVoteDisabledReason({
+    isCurrentArtist,
+    turnIsActive,
+    userReady: Boolean(user && room),
+    userVotedNext,
   })
 
   useEffect(() => {
@@ -140,6 +152,7 @@ export function GamePage() {
           {isCurrentArtist ? <span>Your canvas is active</span> : null}
         </section>
         {room?.status === 'playing' ? <TimerBar secondsLeft={secondsLeft} totalSeconds={totalSeconds} /> : null}
+        <WordHint roomCode={roomCode} room={room} now={now} />
         <section className="word-panel" aria-label="Artist word">
           <p className="section-label">Word</p>
           <strong>{currentWord ?? 'Hidden until your drawing turn'}</strong>
@@ -161,11 +174,25 @@ export function GamePage() {
       <aside className="game-right-column">
         <ActualPointsCard points={actualScore} />
         <AccuseButton roomCode={roomCode} disabledReason={accusationDisabledReason} onError={setError} />
+        <VoteNextArtistButton
+          roomCode={roomCode}
+          disabledReason={voteDisabledReason}
+          voteCount={voteCount}
+          requiredVotes={requiredVotes}
+          onError={setError}
+        />
         <GuessInput roomCode={roomCode} disabled={!canGuess} />
       </aside>
 
       <div className="mobile-accuse-row">
         <AccuseButton roomCode={roomCode} disabledReason={accusationDisabledReason} onError={setError} />
+        <VoteNextArtistButton
+          roomCode={roomCode}
+          disabledReason={voteDisabledReason}
+          voteCount={voteCount}
+          requiredVotes={requiredVotes}
+          onError={setError}
+        />
       </div>
 
       <div className="mobile-scoreboard">
@@ -215,5 +242,20 @@ function getAccusationDisabledReason({
   if (isCurrentArtist) return 'The artist cannot accuse themself.'
   if (actualScore < threshold) return `Need ${threshold} actual points to accuse.`
   if (alreadyAccused) return 'You already accused this turn.'
+  return undefined
+}
+
+type VoteReasonInput = {
+  isCurrentArtist: boolean
+  turnIsActive: boolean
+  userReady: boolean
+  userVotedNext: boolean
+}
+
+function getVoteDisabledReason({ isCurrentArtist, turnIsActive, userReady, userVotedNext }: VoteReasonInput) {
+  if (!userReady) return 'Join the room to vote.'
+  if (!turnIsActive) return 'Voting is only open during an active turn.'
+  if (isCurrentArtist) return 'The artist cannot vote to skip themself.'
+  if (userVotedNext) return 'You already voted.'
   return undefined
 }
