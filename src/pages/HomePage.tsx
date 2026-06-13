@@ -61,6 +61,10 @@ export function HomePage() {
     }
   }
 
+  function openRulesPage() {
+    window.open(`${import.meta.env.BASE_URL}rules.html`, '_blank', 'noopener,noreferrer')
+  }
+
   return (
     <main className="home-page">
       <section className="hero-panel">
@@ -68,6 +72,9 @@ export function HomePage() {
         <p className="eyebrow">Mystery Drawing Party Game</p>
         <h1>Imposter Pictionary</h1>
         <p>Draw the clue, spot the sabotage, and keep the word secret.</p>
+        <button type="button" className="rules-link-button" onClick={openRulesPage}>
+          Rules
+        </button>
       </section>
 
       <section className="home-actions panel" aria-label="Create or join room">

@@ -255,6 +255,11 @@ p {
   font-weight: 850;
 }
 
+.rules-link-button {
+  width: fit-content;
+  margin-top: 4px;
+}
+
 .setup-error-screen h1 {
   margin-bottom: 12px;
   font-size: 34px;
